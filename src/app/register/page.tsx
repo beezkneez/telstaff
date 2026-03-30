@@ -11,7 +11,7 @@ export default function RegisterPage() {
     name: "",
     email: "",
     password: "",
-    platoon: "A",
+    platoon: "1",
     homeStation: "1",
   });
   const [error, setError] = useState("");
@@ -153,7 +153,7 @@ export default function RegisterPage() {
                   onChange={(e) => update("platoon", e.target.value)}
                   className="w-full px-4 py-3 rounded-md bg-surface border border-border text-foreground transition-colors focus:border-ember/50 appearance-none cursor-pointer"
                 >
-                  {["A", "B", "C", "D"].map((p) => (
+                  {["1", "2", "3", "4"].map((p) => (
                     <option key={p} value={p}>
                       Platoon {p}
                     </option>

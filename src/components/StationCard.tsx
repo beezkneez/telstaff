@@ -137,7 +137,7 @@ export default function StationCard({
                           member.rank === "Captain"
                             ? "bg-amber/15 text-amber"
                             : member.rank === "Lieutenant"
-                              ? "bg-platoon-a/15 text-platoon-a"
+                              ? "bg-platoon-3/15 text-platoon-3"
                               : "bg-surface-overlay text-muted"
                         }`}
                       >

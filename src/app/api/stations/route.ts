@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const station = searchParams.get("station");
-  const platoon = searchParams.get("platoon") || "A";
+  const platoon = searchParams.get("platoon") || "1";
   const date = searchParams.get("date") || undefined;
 
   if (station) {

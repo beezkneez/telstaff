@@ -16,10 +16,10 @@
   --amber: #f59e0b;
   --alert-red: #ef4444;
   --success: #22c55e;
-  --platoon-a: #3b82f6;
-  --platoon-b: #f97316;
-  --platoon-c: #22c55e;
-  --platoon-d: #a855f7;
+  --platoon-1: #eab308;
+  --platoon-2: #ef4444;
+  --platoon-3: #3b82f6;
+  --platoon-4: #22c55e;
 }
 
 @theme inline {
@@ -37,10 +37,10 @@
   --color-amber: var(--amber);
   --color-alert-red: var(--alert-red);
   --color-success: var(--success);
-  --color-platoon-a: var(--platoon-a);
-  --color-platoon-b: var(--platoon-b);
-  --color-platoon-c: var(--platoon-c);
-  --color-platoon-d: var(--platoon-d);
+  --color-platoon-1: var(--platoon-1);
+  --color-platoon-2: var(--platoon-2);
+  --color-platoon-3: var(--platoon-3);
+  --color-platoon-4: var(--platoon-4);
   --font-display: 'Barlow Condensed', sans-serif;
   --font-body: 'Barlow', sans-serif;
 }

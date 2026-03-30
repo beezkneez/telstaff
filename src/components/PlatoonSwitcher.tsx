@@ -1,10 +1,10 @@
 "use client";
 
 const PLATOONS = [
-  { id: "A", color: "platoon-a" },
-  { id: "B", color: "platoon-b" },
-  { id: "C", color: "platoon-c" },
-  { id: "D", color: "platoon-d" },
+  { id: "1", color: "platoon-1" },
+  { id: "2", color: "platoon-2" },
+  { id: "3", color: "platoon-3" },
+  { id: "4", color: "platoon-4" },
 ];
 
 interface PlatoonSwitcherProps {

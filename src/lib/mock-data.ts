@@ -91,7 +91,7 @@ for (let s = 1; s <= 31; s++) {
   STATION_CONFIGS[s] = trucks;
 }
 
-const PLATOONS = ["A", "B", "C", "D"];
+const PLATOONS = ["1", "2", "3", "4"];
 
 export function getStationStaffing(
   station: number,

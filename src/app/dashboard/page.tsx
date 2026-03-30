@@ -15,7 +15,7 @@ type ViewMode = "my-station" | "all-stations";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
-  const [platoon, setPlatoon] = useState("A");
+  const [platoon, setPlatoon] = useState("1");
   const [station, setStation] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("my-station");
   const [stationData, setStationData] = useState<StationStaffing | null>(null);
