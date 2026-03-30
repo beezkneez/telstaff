@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
-import { scrapeRoster, scrapeStationFromRoster } from "@/lib/scraper";
 import {
   getStationStaffing,
   getAllStationsForPlatoon,
@@ -20,21 +19,33 @@ export async function GET(req: Request) {
   const station = searchParams.get("station");
   const platoon = searchParams.get("platoon") || "1";
   const date = searchParams.get("date") || undefined;
-  const useMock = searchParams.get("mock") === "true";
 
   // Check if user has Telestaff credentials
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { telestaff_username: true, telestaff_password: true },
-  });
+  let hasCreds = false;
+  let username = "";
+  let password = "";
 
-  const hasCreds =
-    !useMock && user?.telestaff_username && user?.telestaff_password;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { telestaff_username: true, telestaff_password: true },
+    });
 
+    if (user?.telestaff_username && user?.telestaff_password) {
+      username = decrypt(user.telestaff_username);
+      password = decrypt(user.telestaff_password);
+      hasCreds = true;
+    }
+  } catch (error) {
+    console.error("Error loading credentials:", error);
+  }
+
+  // Try real scraper if creds available
   if (hasCreds) {
     try {
-      const username = decrypt(user.telestaff_username!);
-      const password = decrypt(user.telestaff_password!);
+      const { scrapeRoster, scrapeStationFromRoster } = await import(
+        "@/lib/scraper"
+      );
 
       if (station) {
         const data = await scrapeStationFromRoster(
@@ -44,26 +55,13 @@ export async function GET(req: Request) {
           platoon,
           date
         );
-        if (!data) {
-          return NextResponse.json(
-            { error: "Station not found" },
-            { status: 404 }
-          );
-        }
-        return NextResponse.json(data);
+        if (data) return NextResponse.json(data);
+      } else {
+        const data = await scrapeRoster(username, password, platoon, date);
+        if (data.length > 0) return NextResponse.json(data);
       }
-
-      const data = await scrapeRoster(username, password, platoon, date);
-      return NextResponse.json(data);
     } catch (error) {
-      console.error("Scraper error:", error);
-      return NextResponse.json(
-        {
-          error: "Failed to scrape Telestaff. Check your credentials.",
-          usedMock: true,
-        },
-        { status: 500 }
-      );
+      console.error("Scraper error, falling back to mock data:", error);
     }
   }
 
