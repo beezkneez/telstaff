@@ -8,11 +8,36 @@ export default function ProfilePage() {
   const [telestaff, setTelestaff] = useState({ username: "", password: "" });
   const [saved, setSaved] = useState(false);
 
-  function handleSaveTelestaff(e: React.FormEvent) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSaveTelestaff(e: React.FormEvent) {
     e.preventDefault();
-    // TODO: POST to /api/profile/telestaff to save encrypted credentials
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setError("");
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          telestaff_username: telestaff.username,
+          telestaff_password: telestaff.password,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to save");
+      } else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
