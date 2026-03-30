@@ -1,6 +1,19 @@
 "use client";
 
-import type { TruckAssignment } from "@/lib/mock-data";
+interface CrewMember {
+  name: string;
+  rank: string;
+  position: string;
+  employeeId?: string;
+  status?: string;
+}
+
+interface TruckAssignment {
+  truck: string;
+  type: string;
+  phoneNumber?: string;
+  crew: CrewMember[];
+}
 
 const TRUCK_TYPE_CONFIG: Record<
   string,

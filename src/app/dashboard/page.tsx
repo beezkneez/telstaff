@@ -1,15 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import PlatoonSwitcher from "@/components/PlatoonSwitcher";
 import StationDropdown from "@/components/StationDropdown";
 import StationCard from "@/components/StationCard";
-import {
-  getStationStaffing,
-  getAllStationsForPlatoon,
-  type StationStaffing,
-} from "@/lib/mock-data";
+
+interface CrewMember {
+  name: string;
+  rank: string;
+  position: string;
+  employeeId?: string;
+  status?: string;
+  qualifications?: string;
+}
+
+interface TruckAssignment {
+  truck: string;
+  type: string;
+  phoneNumber?: string;
+  crew: CrewMember[];
+}
+
+interface StationStaffing {
+  station: number;
+  district?: number;
+  platoon: string;
+  date: string;
+  trucks: TruckAssignment[];
+  mock?: boolean;
+}
 
 type ViewMode = "my-station" | "all-stations";
 
@@ -17,10 +37,11 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const [platoon, setPlatoon] = useState("1");
   const [station, setStation] = useState(1);
-  const [viewMode, setViewMode] = useState<ViewMode>("my-station");
-  const [stationData, setStationData] = useState<StationStaffing | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("all-stations");
   const [allStations, setAllStations] = useState<StationStaffing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMock, setIsMock] = useState(true);
+  const [error, setError] = useState("");
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -29,18 +50,34 @@ export default function DashboardPage() {
     day: "numeric",
   });
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    // Using mock data directly for now (will switch to API calls with real scraper)
-    if (viewMode === "my-station") {
-      const data = getStationStaffing(station, platoon);
-      setStationData(data);
-    } else {
-      const data = getAllStationsForPlatoon(platoon);
-      setAllStations(data);
+    setError("");
+
+    try {
+      const res = await fetch(`/api/stations?platoon=${platoon}`);
+      if (!res.ok) throw new Error("Failed to load staffing data");
+
+      const data = await res.json();
+      const stations: StationStaffing[] = Array.isArray(data) ? data : [data];
+      setAllStations(stations);
+      setIsMock(stations[0]?.mock === true);
+    } catch (err) {
+      setError("Failed to load data. Using mock data.");
+      setIsMock(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [station, platoon, viewMode]);
+  }, [platoon]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const selectedStation =
+    viewMode === "my-station"
+      ? allStations.find((s) => s.station === station) || null
+      : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -55,17 +92,29 @@ export default function DashboardPage() {
             <p className="text-sm text-muted mt-1">{today}</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse-ember" />
-            Using mock data — connect Telestaff to go live
+            <span
+              className={`w-2 h-2 rounded-full ${isMock ? "bg-amber" : "bg-success"} animate-pulse-ember`}
+            />
+            {isMock
+              ? "Mock data — save Telestaff credentials in Profile"
+              : "Live from Telestaff"}
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 p-3 rounded-md bg-alert-red/10 border border-alert-red/20 text-alert-red text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Controls bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 animate-fade-slide-up delay-150">
         <div className="flex flex-wrap items-center gap-3">
           <PlatoonSwitcher active={platoon} onChange={setPlatoon} />
-          <StationDropdown value={station} onChange={setStation} />
+          {viewMode === "my-station" && (
+            <StationDropdown value={station} onChange={setStation} />
+          )}
         </div>
 
         {/* View toggle */}
@@ -119,13 +168,19 @@ export default function DashboardPage() {
             Loading staffing data...
           </div>
         </div>
-      ) : viewMode === "my-station" && stationData ? (
-        <div className="max-w-2xl">
-          <StationCard
-            station={stationData.station}
-            trucks={stationData.trucks}
-          />
-        </div>
+      ) : viewMode === "my-station" ? (
+        selectedStation ? (
+          <div className="max-w-2xl">
+            <StationCard
+              station={selectedStation.station}
+              trucks={selectedStation.trucks}
+            />
+          </div>
+        ) : (
+          <div className="text-center py-20 text-muted">
+            <p>No data for Station {station}. Try a different station or platoon.</p>
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {allStations.map((s, idx) => (

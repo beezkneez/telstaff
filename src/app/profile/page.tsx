@@ -1,15 +1,33 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function ProfilePage() {
   const { data: session } = useSession();
   const [telestaff, setTelestaff] = useState({ username: "", password: "" });
   const [saved, setSaved] = useState(false);
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [hasCredsSaved, setHasCredsSaved] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          setHasCredsSaved(data.hasTelestaffCreds);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoadingProfile(false);
+      }
+    }
+    loadProfile();
+  }, []);
 
   async function handleSaveTelestaff(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +49,8 @@ export default function ProfilePage() {
         setError(data.error || "Failed to save");
       } else {
         setSaved(true);
+        setHasCredsSaved(true);
+        setTelestaff({ username: "", password: "" });
         setTimeout(() => setSaved(false), 3000);
       }
     } catch {
@@ -76,16 +96,41 @@ export default function ProfilePage() {
 
       {/* Telestaff credentials */}
       <div className="rounded-xl bg-surface border border-border-subtle overflow-hidden animate-fade-slide-up delay-300">
-        <div className="px-5 py-4 border-b border-border-subtle">
+        <div className="px-5 py-4 border-b border-border-subtle flex items-center justify-between">
           <h2 className="font-display text-sm font-bold tracking-wider text-muted uppercase">
             Telestaff Connection
           </h2>
+          {!loadingProfile && (
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`w-2 h-2 rounded-full ${hasCredsSaved ? "bg-success" : "bg-amber"}`}
+              />
+              <span
+                className={`text-xs font-medium ${hasCredsSaved ? "text-success" : "text-amber"}`}
+              >
+                {hasCredsSaved ? "Connected" : "Not connected"}
+              </span>
+            </div>
+          )}
         </div>
         <form onSubmit={handleSaveTelestaff} className="p-5 space-y-4">
+          {hasCredsSaved && (
+            <div className="p-3 rounded-md bg-success/10 border border-success/20 text-success text-sm">
+              Telestaff credentials are saved and encrypted. Enter new
+              credentials below to update them.
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 rounded-md bg-alert-red/10 border border-alert-red/20 text-alert-red text-sm">
+              {error}
+            </div>
+          )}
+
           <p className="text-xs text-muted leading-relaxed">
-            Enter your Telestaff credentials to enable live data scraping.
-            Credentials are encrypted with AES-256 and never stored in
-            plaintext.
+            {hasCredsSaved
+              ? "Your credentials are securely stored. Update them below if needed."
+              : "Enter your Telestaff credentials to enable live data scraping."}
           </p>
 
           <div>
@@ -99,7 +144,11 @@ export default function ProfilePage() {
                 setTelestaff((prev) => ({ ...prev, username: e.target.value }))
               }
               className="w-full px-4 py-3 rounded-md bg-background border border-border text-foreground placeholder:text-muted/50 transition-colors focus:border-ember/50"
-              placeholder="Your Telestaff username"
+              placeholder={
+                hasCredsSaved
+                  ? "Enter new username to update"
+                  : "Your Telestaff username"
+              }
             />
           </div>
 
@@ -114,16 +163,21 @@ export default function ProfilePage() {
                 setTelestaff((prev) => ({ ...prev, password: e.target.value }))
               }
               className="w-full px-4 py-3 rounded-md bg-background border border-border text-foreground placeholder:text-muted/50 transition-colors focus:border-ember/50"
-              placeholder="Your Telestaff password"
+              placeholder={
+                hasCredsSaved
+                  ? "Enter new password to update"
+                  : "Your Telestaff password"
+              }
             />
           </div>
 
           <div className="flex items-center gap-3 pt-2">
             <button
               type="submit"
-              className="px-6 py-2.5 bg-ember hover:bg-ember-glow text-white text-sm font-semibold rounded-md transition-all hover:shadow-[0_0_20px_rgba(249,115,22,0.3)]"
+              disabled={saving || !telestaff.username || !telestaff.password}
+              className="px-6 py-2.5 bg-ember hover:bg-ember-glow disabled:bg-ember-dim text-white text-sm font-semibold rounded-md transition-all hover:shadow-[0_0_20px_rgba(249,115,22,0.3)] disabled:opacity-50"
             >
-              Save Credentials
+              {saving ? "Saving..." : hasCredsSaved ? "Update Credentials" : "Save Credentials"}
             </button>
             {saved && (
               <span className="text-xs text-success font-medium animate-fade-in">
