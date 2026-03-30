@@ -109,7 +109,7 @@ export default function DashboardPage() {
       )}
 
       {/* Controls bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 animate-fade-slide-up delay-150">
+      <div className="relative z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 animate-fade-slide-up delay-150">
         <div className="flex flex-wrap items-center gap-3">
           <PlatoonSwitcher active={platoon} onChange={setPlatoon} />
           {viewMode === "my-station" && (
