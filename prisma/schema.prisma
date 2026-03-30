@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  passwordHash       String
+  telestaff_username String?
+  telestaff_password String?  // AES-256 encrypted
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  profile            Profile?
+}
+
+model Profile {
+  id          String @id @default(cuid())
+  userId      String @unique
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  rank        String?
+  platoon     String // A, B, C, D
+  homeStation Int    // 1-31
+}
+
+model StaffingCache {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  platoon   String
+  station   Int
+  data      Json     // truck assignments + personnel
+  scrapedAt DateTime @default(now())
+
+  @@unique([date, platoon, station])
+  @@index([date, platoon])
+}
