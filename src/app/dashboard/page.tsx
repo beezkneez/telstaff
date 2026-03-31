@@ -37,6 +37,10 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const [platoon, setPlatoon] = useState("");
   const [station, setStation] = useState(1);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    return now.toISOString().split("T")[0]; // YYYY-MM-DD
+  });
   const [viewMode, setViewMode] = useState<ViewMode>("my-station");
   const [allStations, setAllStations] = useState<StationStaffing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +73,7 @@ export default function DashboardPage() {
     loadDefaults();
   }, []);
 
-  const today = new Date().toLocaleDateString("en-US", {
+  const displayDate = new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -82,7 +86,7 @@ export default function DashboardPage() {
     setError("");
 
     try {
-      const res = await fetch(`/api/stations?platoon=${platoon}`);
+      const res = await fetch(`/api/stations?platoon=${platoon}&date=${selectedDate}`);
       if (!res.ok) throw new Error("Failed to load staffing data");
 
       const data = await res.json();
@@ -95,13 +99,13 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [platoon]);
+  }, [platoon, selectedDate]);
 
   useEffect(() => {
     if (profileLoaded && platoon) {
       fetchData();
     }
-  }, [fetchData, profileLoaded, platoon]);
+  }, [fetchData, profileLoaded, platoon, selectedDate]);
 
   const selectedStation =
     viewMode === "my-station"
@@ -117,7 +121,7 @@ export default function DashboardPage() {
             <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-[0.1em]">
               OPS<span className="text-ember">//</span>BOARD
             </h1>
-            <p className="font-mono text-[11px] tracking-[0.15em] text-muted mt-1 uppercase">{today}</p>
+            <p className="font-mono text-[11px] tracking-[0.15em] text-muted mt-1 uppercase">{displayDate}</p>
           </div>
           <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider text-muted uppercase">
             <span
@@ -143,6 +147,12 @@ export default function DashboardPage() {
           {viewMode === "my-station" && (
             <StationDropdown value={station} onChange={setStation} />
           )}
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="px-3 py-2 bg-surface border border-border font-mono text-[11px] tracking-wider text-foreground transition-colors focus:border-ember/50 cursor-pointer"
+          />
         </div>
 
         {/* View toggle */}

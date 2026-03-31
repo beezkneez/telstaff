@@ -263,12 +263,23 @@ export async function scrapeRoster(
   try {
     await login(page, username, password);
 
-    // Navigate to roster page
+    // Navigate to roster page with today's date in URL
     const d = formatDate(date);
     const rosterUrl = `${TELESTAFF_BASE_URL}/telestaff/roster/d%5B${d}%5D`;
     console.log("[scraper] Navigating to roster:", rosterUrl);
     await page.goto(rosterUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForTimeout(2000);
+
+    // Set the target date if specified (format: MM/DD/YYYY)
+    if (date) {
+      const [yyyy, mm, dd] = date.split("-");
+      const mmddyyyy = `${mm}/${dd}/${yyyy}`;
+      console.log("[scraper] Setting date to:", mmddyyyy);
+      await page.fill("#targetDate", "");
+      await page.fill("#targetDate", mmddyyyy);
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(3000);
+    }
 
     // Select platoon from dropdown
     await selectPlatoon(page, platoon);
