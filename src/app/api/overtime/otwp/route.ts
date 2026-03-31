@@ -31,11 +31,16 @@ export async function GET(req: Request) {
 
   const userPlatoon = user.profile.platoon;
 
-  // Get the eligible days from last 6-off
+  // Get the eligible days from last 6-off + today
   const last6Off = getLast6Off(date, userPlatoon);
   const eligibleDates = last6Off.dates.filter((_, i) => last6Off.eligible[i]);
 
-  const scrapeList = eligibleDates
+  // Also include today and yesterday so we always have fresh data
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const allDates = [...new Set([...eligibleDates, today, yesterday])];
+
+  const scrapeList = allDates
     .map((d) => {
       const shifts = getOnShiftPlatoons(d);
       return {
