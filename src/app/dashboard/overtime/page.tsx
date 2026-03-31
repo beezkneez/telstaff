@@ -58,8 +58,10 @@ interface OvertimeData {
     shift: "day" | "night";
     requiredCrew: number;
     actualCrew: number;
-    holes: number;
-    truckBreakdown: { truck: string; type: string; required: number; actual: number; short: number }[];
+    ffHoles: number;
+    captainHoles: number;
+    totalHoles: number;
+    truckBreakdown: { truck: string; type: string; requiredFF: number; actualFF: number; shortFF: number; hasCaptain: boolean; needsCaptain: boolean }[];
   }[];
 }
 
@@ -77,6 +79,82 @@ const PLATOON_COLORS: Record<string, string> = {
   "3": "platoon-3",
   "4": "platoon-4",
 };
+
+function ShortfallCard({ sf, dateLabel }: {
+  sf: OvertimeData["shortfalls"][0];
+  dateLabel: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border border-border-subtle">
+      <div className="px-3 py-2 bg-surface-raised/50 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs text-foreground">{dateLabel}</span>
+          <span className={`font-mono text-[10px] tracking-wider uppercase ${sf.shift === "day" ? "text-amber" : "text-platoon-3"}`}>
+            {sf.shift} shift
+          </span>
+          <span
+            className="font-mono text-[10px] px-1.5 py-0.5"
+            style={{
+              backgroundColor: `color-mix(in srgb, var(--platoon-${sf.platoon}) 15%, transparent)`,
+              color: `var(--platoon-${sf.platoon})`,
+            }}
+          >
+            PLT-{sf.platoon}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs text-muted">{sf.actualCrew}/{sf.requiredCrew}</span>
+          <span className="font-mono text-sm text-ember font-bold">{sf.ffHoles} FF</span>
+          {sf.captainHoles > 0 && (
+            <span className="font-mono text-sm text-amber font-bold">{sf.captainHoles} Capt</span>
+          )}
+        </div>
+      </div>
+      {sf.truckBreakdown.length > 0 && (
+        <div className="px-3 py-2">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-2 font-mono text-[10px] text-muted hover:text-foreground tracking-wider uppercase transition-colors w-full"
+          >
+            <svg
+              className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            {sf.truckBreakdown.length} trucks with holes
+          </button>
+          {expanded && (
+            <div className="mt-2 divide-y divide-border-subtle animate-fade-in">
+              {sf.truckBreakdown.map((t, j) => (
+                <div key={j} className="flex items-center justify-between py-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[11px] text-foreground">{t.truck}</span>
+                    {t.needsCaptain && (
+                      <span className="font-mono text-[9px] px-1 py-0.5 bg-amber/10 text-amber border border-amber/20">NO CAPT</span>
+                    )}
+                  </div>
+                  {t.shortFF > 0 ? (
+                    <span className="font-mono text-[11px] text-ember">
+                      {t.actualFF}/{t.requiredFF} FF ({t.shortFF} short)
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[11px] text-muted">FF full</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function OvertimePage() {
   const [data, setData] = useState<OvertimeData | null>(null);
@@ -284,52 +362,11 @@ export default function OvertimePage() {
               <div className="space-y-3">
                 {data.shortfalls.map((sf, i) => {
                   const dateLabel = new Date(sf.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-                  return (
-                    <div key={i} className="border border-border-subtle">
-                      <div className="px-3 py-2 bg-surface-raised/50 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono text-xs text-foreground">{dateLabel}</span>
-                          <span className={`font-mono text-[10px] tracking-wider uppercase ${sf.shift === "day" ? "text-amber" : "text-platoon-3"}`}>
-                            {sf.shift} shift
-                          </span>
-                          <span
-                            className="font-mono text-[10px] px-1.5 py-0.5"
-                            style={{
-                              backgroundColor: `color-mix(in srgb, var(--platoon-${sf.platoon}) 15%, transparent)`,
-                              color: `var(--platoon-${sf.platoon})`,
-                            }}
-                          >
-                            PLT-{sf.platoon}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-muted">{sf.actualCrew}/{sf.requiredCrew}</span>
-                          <span className="font-mono text-sm text-ember font-bold">{sf.holes} holes</span>
-                        </div>
-                      </div>
-                      {sf.truckBreakdown.length > 0 && (
-                        <div className="px-3 py-2 divide-y divide-border-subtle">
-                          {sf.truckBreakdown.slice(0, 8).map((t, j) => (
-                            <div key={j} className="flex items-center justify-between py-1">
-                              <span className="font-mono text-[11px] text-muted">{t.truck}</span>
-                              <span className="font-mono text-[11px] text-ember">
-                                {t.actual}/{t.required} ({t.short} short)
-                              </span>
-                            </div>
-                          ))}
-                          {sf.truckBreakdown.length > 8 && (
-                            <p className="font-mono text-[10px] text-muted py-1">
-                              +{sf.truckBreakdown.length - 8} more trucks short
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
+                  return <ShortfallCard key={i} sf={sf} dateLabel={dateLabel} />;
                 })}
               </div>
               <p className="font-mono text-[10px] text-muted tracking-wider mt-3">
-                Holes = required crew per truck minus actual assigned. These are the OT spots that need filling.
+                FF holes = firefighter spots to fill via OT. Captain holes listed separately.
               </p>
             </div>
           )}

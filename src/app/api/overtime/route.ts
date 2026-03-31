@@ -247,7 +247,7 @@ export async function GET(req: Request) {
         if (cached.length > 0) {
           const stations = cached.map((c) => c.data as unknown as { station: number; trucks: { truck: string; type: string; crew: { name: string; rank: string }[] }[] });
           const shortfall = calculateShortfall(stations, shiftPlatoon, detail.date, shiftType);
-          if (shortfall.holes > 0) {
+          if (shortfall.totalHoles > 0) {
             shortfalls.push(shortfall);
           }
         }

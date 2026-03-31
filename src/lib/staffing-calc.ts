@@ -12,20 +12,26 @@ interface StationData {
   trucks: TruckData[];
 }
 
+export interface TruckShortfall {
+  truck: string;
+  type: string;
+  requiredFF: number;
+  actualFF: number;
+  shortFF: number;
+  hasCaptain: boolean;
+  needsCaptain: boolean;
+}
+
 export interface StaffingShortfall {
   date: string;
   platoon: string;
   shift: "day" | "night";
   requiredCrew: number;
   actualCrew: number;
-  holes: number;
-  truckBreakdown: {
-    truck: string;
-    type: string;
-    required: number;
-    actual: number;
-    short: number;
-  }[];
+  ffHoles: number;
+  captainHoles: number;
+  totalHoles: number;
+  truckBreakdown: TruckShortfall[];
 }
 
 function isOffRoster(t: TruckData): boolean {
@@ -42,6 +48,11 @@ function isSupportRank(rank: string): boolean {
   );
 }
 
+function isCaptainRank(rank: string): boolean {
+  const lower = rank.toLowerCase().trim();
+  return lower.includes("captain");
+}
+
 export function calculateShortfall(
   stations: StationData[],
   platoon: string,
@@ -50,31 +61,44 @@ export function calculateShortfall(
 ): StaffingShortfall {
   let totalRequired = 0;
   let totalActual = 0;
-  const truckBreakdown: StaffingShortfall["truckBreakdown"] = [];
+  let totalFFHoles = 0;
+  let totalCaptainHoles = 0;
+  const truckBreakdown: TruckShortfall[] = [];
 
   for (const station of stations) {
     for (const truck of station.trucks) {
       if (isOffRoster(truck)) continue;
 
-      // Filter out support staff from crew count
+      // Filter out support staff
       const activeCrew = truck.crew.filter((c) => !isSupportRank(c.rank || ""));
-      const actual = activeCrew.length;
+      const captains = activeCrew.filter((c) => isCaptainRank(c.rank || ""));
+      const ffs = activeCrew.filter((c) => !isCaptainRank(c.rank || ""));
 
-      // Look up required crew for this truck type
+      // Required crew for this truck
       const truckType = truck.type || "Other";
-      const required = REQUIRED_CREW[truckType] || REQUIRED_CREW[truck.truck.split(" ")[0]] || 4;
+      const totalReq = REQUIRED_CREW[truckType] || REQUIRED_CREW[truck.truck.split(" ")[0]] || 4;
+      const requiredCaptains = 1; // every truck needs 1 captain
+      const requiredFF = totalReq - requiredCaptains;
 
-      totalRequired += required;
-      totalActual += actual;
+      totalRequired += totalReq;
+      totalActual += activeCrew.length;
 
-      const short = Math.max(0, required - actual);
-      if (short > 0) {
+      const hasCaptain = captains.length >= requiredCaptains;
+      const needsCaptain = !hasCaptain;
+      const ffShort = Math.max(0, requiredFF - ffs.length);
+
+      if (needsCaptain) totalCaptainHoles++;
+      totalFFHoles += ffShort;
+
+      if (ffShort > 0 || needsCaptain) {
         truckBreakdown.push({
           truck: `STN-${String(station.station).padStart(2, "0")} ${truck.truck}`,
           type: truckType,
-          required,
-          actual,
-          short,
+          requiredFF,
+          actualFF: ffs.length,
+          shortFF: ffShort,
+          hasCaptain,
+          needsCaptain,
         });
       }
     }
@@ -86,7 +110,9 @@ export function calculateShortfall(
     shift,
     requiredCrew: totalRequired,
     actualCrew: totalActual,
-    holes: Math.max(0, totalRequired - totalActual),
-    truckBreakdown: truckBreakdown.sort((a, b) => b.short - a.short),
+    ffHoles: totalFFHoles,
+    captainHoles: totalCaptainHoles,
+    totalHoles: totalFFHoles + totalCaptainHoles,
+    truckBreakdown: truckBreakdown.sort((a, b) => b.shortFF - a.shortFF),
   };
 }
