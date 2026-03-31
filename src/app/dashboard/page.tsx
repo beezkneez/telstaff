@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import PlatoonSwitcher from "@/components/PlatoonSwitcher";
 import StationDropdown from "@/components/StationDropdown";
 import StationCard from "@/components/StationCard";
+import SupportStaffCard from "@/components/SupportStaffCard";
 
 interface CrewMember {
   name: string;
@@ -145,9 +146,62 @@ export default function DashboardPage() {
     }
   }, [fetchData, profileLoaded, platoon, selectedDate]);
 
+  // Separate support staff from regular stations
+  const SUPPORT_RANKS: Record<string, string> = {
+    "sr captain investigator": "Investigations",
+    "captain investigator": "Investigations",
+    "investigator": "Investigations",
+    ".sr captain investigator": "Investigations",
+    ".captain investigator": "Investigations",
+    ".investigator": "Investigations",
+    "ecs captain": "Dispatch",
+    "emergency communications specialist": "Dispatch",
+    "ecs q": "Dispatch",
+    ".ecs captain": "Dispatch",
+    ".emergency communications specialist": "Dispatch",
+    ".ecs q": "Dispatch",
+    "duty office staff": "Dispatch",
+    ".duty office staff": "Dispatch",
+  };
+
+  const isSupportStaff = (rank: string) => {
+    return SUPPORT_RANKS[rank.toLowerCase().trim()] !== undefined;
+  };
+
+  const getSupportGroup = (rank: string) => {
+    return SUPPORT_RANKS[rank.toLowerCase().trim()] || "Other";
+  };
+
+  // Process stations: pull support staff out, sort 1-31
+  const regularStations = allStations
+    .map((s) => ({
+      ...s,
+      trucks: s.trucks.map((t) => ({
+        ...t,
+        crew: t.crew.filter((c) => !isSupportStaff(c.rank || "")),
+      })).filter((t) => t.crew.length > 0),
+    }))
+    .filter((s) => s.station >= 1 && s.station <= 31)
+    .sort((a, b) => a.station - b.station);
+
+  // Collect all support staff into groups
+  const supportStaffMap = new Map<string, { name: string; rank: string; position: string }[]>();
+  for (const s of allStations) {
+    for (const t of s.trucks) {
+      for (const c of t.crew) {
+        if (isSupportStaff(c.rank || "")) {
+          const group = getSupportGroup(c.rank || "");
+          if (!supportStaffMap.has(group)) supportStaffMap.set(group, []);
+          supportStaffMap.get(group)!.push({ name: c.name, rank: c.rank || "", position: c.position || "" });
+        }
+      }
+    }
+  }
+  const supportGroups = Array.from(supportStaffMap.entries()).map(([label, members]) => ({ label, members }));
+
   const selectedStation =
     viewMode === "my-station"
-      ? allStations.find((s) => s.station === station) || null
+      ? regularStations.find((s) => s.station === station) || null
       : null;
 
   const isOff = rotationInfo && !rotationInfo.isWorking;
@@ -322,7 +376,7 @@ export default function DashboardPage() {
         )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {allStations.map((s, idx) => (
+          {regularStations.map((s, idx) => (
             <StationCard
               key={s.station}
               station={s.station}
@@ -330,6 +384,12 @@ export default function DashboardPage() {
               animationDelay={Math.min(idx * 50, 500)}
             />
           ))}
+          {supportGroups.length > 0 && (
+            <SupportStaffCard
+              groups={supportGroups}
+              animationDelay={Math.min(regularStations.length * 50, 500)}
+            />
+          )}
         </div>
       )}
 
@@ -339,15 +399,17 @@ export default function DashboardPage() {
           {(() => {
             const isOff = (t: { type: string; truck: string }) =>
               t.type === "OffRoster" || /^ff\s+\d/i.test(t.truck);
-            const activeUnits = allStations.reduce(
+            const activeUnits = regularStations.reduce(
               (sum, s) => sum + s.trucks.filter((t) => !isOff(t)).length, 0
             );
-            const activeCrew = allStations.reduce(
+            const activeCrew = regularStations.reduce(
               (sum, s) => sum + s.trucks.filter((t) => !isOff(t)).reduce((t, u) => t + u.crew.length, 0), 0
             );
-            const totalCrew = allStations.reduce(
-              (sum, s) => sum + s.trucks.reduce((t, u) => t + u.crew.length, 0), 0
+            const offRosterCrew = regularStations.reduce(
+              (sum, s) => sum + s.trucks.filter((t) => isOff(t)).reduce((t, u) => t + u.crew.length, 0), 0
             );
+            const supportCrew = supportGroups.reduce((s, g) => s + g.members.length, 0);
+            const totalCrew = activeCrew + offRosterCrew + supportCrew;
             const offRoster = totalCrew - activeCrew;
             return [
             {
