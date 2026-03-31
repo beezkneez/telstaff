@@ -96,6 +96,8 @@ export interface PredictionInput {
   last6OffTotal: number; // total OTWP across user's last 6-off (all 4 eligible days)
   todayOtwp: number | null; // today's OTWP count if available
   date: string;
+  historicalAvgPerShift?: number; // average OTWP per shift over last 3 months
+  recentTrend?: "rising" | "stable" | "falling"; // trend direction
 }
 
 export interface PredictionResult {
@@ -120,22 +122,52 @@ export interface PredictionResult {
 }
 
 export function predictOvertime(input: PredictionInput): PredictionResult {
-  const { positionsAhead, last6OffTotal, todayOtwp, date } = input;
+  const { positionsAhead, last6OffTotal, todayOtwp, date, historicalAvgPerShift, recentTrend } = input;
   const d = new Date(date + "T12:00:00");
   const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
   const stat = isNearStatHoliday(date);
-  const { ratio: callThroughRatio, label: callThroughLabel } = getCallThroughRate(date);
+  const { ratio: baseRatio, label: baseLabel } = getCallThroughRate(date);
 
-  // Best estimate of call-ins: use today's OTWP if available, otherwise average from last 6-off
-  // Last 6-off total is across 4 eligible days × 2 shifts = 8 shift-periods
+  // Dynamic adjustment based on historical trends
+  let dynamicMultiplier = 1.0;
+  let dynamicNote = "";
+
+  if (historicalAvgPerShift && last6OffTotal > 0) {
+    const currentAvg = last6OffTotal / 8; // 4 days × 2 shifts
+    const deviation = currentAvg / historicalAvgPerShift;
+
+    if (deviation > 1.4) {
+      // OT demand is way above average — people declining more
+      dynamicMultiplier = 1.3;
+      dynamicNote = "OT demand well above average — higher decline rate";
+    } else if (deviation > 1.15) {
+      dynamicMultiplier = 1.15;
+      dynamicNote = "OT demand above average — slightly higher decline rate";
+    } else if (deviation < 0.6) {
+      dynamicMultiplier = 0.8;
+      dynamicNote = "OT demand well below average — easier to fill";
+    } else if (deviation < 0.85) {
+      dynamicMultiplier = 0.9;
+      dynamicNote = "OT demand below average — slightly easier to fill";
+    }
+  }
+
+  // Trend adjustment
+  if (recentTrend === "rising") {
+    dynamicMultiplier *= 1.1;
+    dynamicNote += (dynamicNote ? ". " : "") + "Trending up — demand increasing";
+  } else if (recentTrend === "falling") {
+    dynamicMultiplier *= 0.9;
+    dynamicNote += (dynamicNote ? ". " : "") + "Trending down — demand decreasing";
+  }
+
+  const callThroughRatio = Math.round(baseRatio * dynamicMultiplier * 10) / 10;
+  const callThroughLabel = dynamicNote || baseLabel;
+
+  // Best estimate of call-ins
   const avgPerShift = last6OffTotal > 0 ? last6OffTotal / 8 : 8;
   const estimatedSlots = todayOtwp !== null ? todayOtwp : Math.round(avgPerShift);
-
-  // Names they'll need to call = slots × call-through ratio
-  // e.g., 10 slots × 3.0 ratio = 30 names called on a Saturday
   const namesTheyWillCall = Math.ceil(estimatedSlots * callThroughRatio);
-
-  // But for the 6-off comparison: total names called across all 4 days
   const totalNamesOver6Off = Math.ceil(last6OffTotal * callThroughRatio);
 
   const willGetCalled = positionsAhead < totalNamesOver6Off;
@@ -174,8 +206,13 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     { name: "Est. names called (6-off)", value: `~${totalNamesOver6Off}`, impact: "OTWP × call-through ratio" },
     { name: "Est. per shift today", value: todayOtwp !== null ? String(todayOtwp) : `~${estimatedSlots} (avg)`, impact: "Today's demand estimate" },
     { name: "Est. names called today", value: `~${namesTheyWillCall}`, impact: "Per-shift × call-through" },
-    { name: "Day of week", value: dayOfWeek, impact: callThroughLabel },
+    { name: "Base ratio", value: `${baseRatio}:1`, impact: baseLabel },
+    { name: "Dynamic adjust", value: `×${dynamicMultiplier}`, impact: dynamicNote || "No adjustment" },
+    { name: "Final ratio", value: `${callThroughRatio}:1`, impact: "Base × dynamic" },
+    { name: "Day of week", value: dayOfWeek, impact: baseLabel },
     { name: "Near stat holiday", value: stat.near ? `${stat.holiday} (${stat.daysAway}d)` : "No", impact: stat.near ? "Reduces demand" : "Normal demand" },
+    { name: "Historical avg/shift", value: historicalAvgPerShift ? String(Math.round(historicalAvgPerShift * 10) / 10) : "N/A", impact: "3-month average" },
+    { name: "Trend", value: recentTrend || "Unknown", impact: recentTrend === "rising" ? "+10% ratio" : recentTrend === "falling" ? "-10% ratio" : "No change" },
   ];
 
   return {

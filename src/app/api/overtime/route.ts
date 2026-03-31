@@ -120,11 +120,49 @@ export async function GET(req: Request) {
       ? todayOtwpEntries.reduce((s, o) => s + o.count, 0)
       : null;
 
+    // Calculate historical average and trend from all OTWP data
+    let historicalAvgPerShift: number | undefined;
+    let recentTrend: "rising" | "stable" | "falling" | undefined;
+
+    try {
+      const threeMonthsAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const allOtwp = await prisma.oTWPCache.findMany({
+        where: { date: { gte: threeMonthsAgo } },
+        orderBy: { date: "asc" },
+      });
+
+      if (allOtwp.length > 0) {
+        const total = allOtwp.reduce((s, o) => s + o.count, 0);
+        historicalAvgPerShift = total / allOtwp.length;
+
+        // Calculate trend: compare last 2 weeks vs 2 weeks before that
+        const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+        const fourWeeksAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+
+        const recent = allOtwp.filter((o) => o.date >= twoWeeksAgo);
+        const prior = allOtwp.filter((o) => o.date >= fourWeeksAgo && o.date < twoWeeksAgo);
+
+        if (recent.length > 0 && prior.length > 0) {
+          const recentAvg = recent.reduce((s, o) => s + o.count, 0) / recent.length;
+          const priorAvg = prior.reduce((s, o) => s + o.count, 0) / prior.length;
+          const change = (recentAvg - priorAvg) / (priorAvg || 1);
+
+          if (change > 0.15) recentTrend = "rising";
+          else if (change < -0.15) recentTrend = "falling";
+          else recentTrend = "stable";
+        }
+      }
+    } catch (err) {
+      console.error("[overtime] Historical calc error:", err);
+    }
+
     prediction = predictOvertime({
       positionsAhead: callInData.positionsAhead,
       last6OffTotal,
       todayOtwp,
       date,
+      historicalAvgPerShift,
+      recentTrend,
     });
   }
 
