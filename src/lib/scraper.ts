@@ -1,8 +1,6 @@
 import { chromium, type Browser, type Page } from "playwright";
 import {
   type StationStaffing,
-  type TruckAssignment,
-  type CrewMember,
   PLATOON_ROSTER_VIEW_IDS,
   TELESTAFF_BASE_URL,
 } from "./types";
@@ -26,29 +24,23 @@ async function login(
     waitUntil: "domcontentloaded",
     timeout: 30000,
   });
-  console.log("[scraper] Login page loaded, URL:", page.url());
+  console.log("[scraper] Login page loaded");
 
   await page.fill("#username", username);
   await page.fill("#password", password);
   console.log("[scraper] Credentials filled, clicking Sign In...");
 
-  // Submit the login form — click "Sign In" button by text
   await page.getByRole("button", { name: "Sign In" }).click();
-  console.log("[scraper] Clicked Sign In, waiting for redirect...");
 
-  // Wait for the login page to go away (URL changes from /login)
   await page.waitForFunction(
     () => !window.location.href.includes("/login"),
     { timeout: 30000 }
   );
-  console.log("[scraper] Login complete, URL:", page.url());
+  console.log("[scraper] Login complete");
 }
 
 function formatDate(date?: string): string {
-  if (date) {
-    // Convert YYYY-MM-DD to YYYYMMDD
-    return date.replace(/-/g, "");
-  }
+  if (date) return date.replace(/-/g, "");
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -56,34 +48,38 @@ function formatDate(date?: string): string {
   return `${yyyy}${mm}${dd}`;
 }
 
-function getRosterUrl(platoon: string, date?: string): string {
+async function selectPlatoon(page: Page, platoon: string): Promise<void> {
   const viewId = PLATOON_ROSTER_VIEW_IDS[platoon];
-  if (!viewId) throw new Error(`Unknown platoon: ${platoon}`);
-  const d = formatDate(date);
-  return `${TELESTAFF_BASE_URL}/telestaff/roster/d%5B${d}%5D?rosterViewId=${viewId}&dynamicDateOffSet=0&collapsedStateChanges=&refresh=true`;
+  console.log("[scraper] Clicking #rosterView dropdown...");
+  await page.click("#rosterView", { timeout: 10000 });
+  await page.waitForTimeout(500);
+  console.log("[scraper] Selecting platoon:", viewId);
+
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 30000 }),
+    page.click(`a[value="${viewId}"]`),
+  ]);
+  console.log("[scraper] Platoon selected, URL:", page.url());
 }
 
-function classifyTruckType(
-  truckName: string
-): TruckAssignment["type"] {
-  const lower = truckName.toLowerCase();
-  if (lower.includes("pump") || lower.includes("engine")) return "Engine";
-  if (lower.includes("ladder") || lower.includes("tower") || lower.includes("quint")) return "Ladder";
-  if (lower.includes("rescue")) return "Rescue";
-  if (lower.includes("medic") || lower.includes("ems")) return "Medic";
-  if (lower.includes("hazmat") || lower.includes("haz")) return "Hazmat";
-  if (lower.includes("command") || lower.includes("chief") || lower.includes("battalion")) return "Command";
-  return "Other";
-}
-
-function parseStationNumber(text: string): number {
-  const match = text.match(/station\s*(\d+)/i);
-  return match ? parseInt(match[1]) : 0;
-}
-
-function parseDistrictNumber(text: string): number {
-  const match = text.match(/district\s*(\d+)/i);
-  return match ? parseInt(match[1]) : 0;
+async function expandAllStations(page: Page): Promise<void> {
+  // Click all collapsed expand buttons
+  let expandCount = 0;
+  // May need multiple passes as expanding parents reveals child expand buttons
+  for (let pass = 0; pass < 3; pass++) {
+    const buttons = await page.$$('a.plainTextLink[aria-label="Expand/collapse"][aria-expanded="false"]');
+    if (buttons.length === 0) break;
+    console.log("[scraper] Pass", pass + 1, "- expanding", buttons.length, "items");
+    for (const btn of buttons) {
+      try {
+        await btn.click();
+        expandCount++;
+        await page.waitForTimeout(100);
+      } catch { /* skip */ }
+    }
+    await page.waitForTimeout(2000);
+  }
+  console.log("[scraper] Expanded", expandCount, "total items");
 }
 
 async function parseRosterPage(
@@ -91,70 +87,17 @@ async function parseRosterPage(
   platoon: string,
   date: string
 ): Promise<StationStaffing[]> {
-  // Wait for the roster table to be in the DOM
-  await page.waitForSelector("#tableGrid", {
-    state: "attached",
-    timeout: 30000,
-  });
-  // Give the roster data time to fully populate
-  await page.waitForTimeout(5000);
+  // Wait for roster data to load
+  await page.waitForTimeout(10000);
 
-  // Debug: find a crew member element to understand the row structure
-  const debugInfo = await page.evaluate(() => {
-    // Find elements with 7-digit employee IDs (crew members)
-    const allEls = Array.from(document.querySelectorAll('*'));
-    const crewEls = allEls.filter(el => {
-      const text = el.textContent?.trim() || "";
-      return text.match(/^\d{7}$/) && el.children.length === 0;
-    }).slice(0, 2);
-
-    // Get the crew row structure — go up to find the containing row
-    const crewRowHtml = crewEls.map(el => {
-      // Walk up to find a row-like container
-      let parent = el.parentElement;
-      for (let i = 0; i < 8 && parent; i++) {
-        const cls = parent.className || "";
-        if (cls.includes("row") || cls.includes("Row") || cls.includes("person") || cls.includes("Person") || cls.includes("slot") || cls.includes("Slot") || parent.tagName === "TR") {
-          return { level: i, tag: parent.tagName, class: parent.className, html: parent.outerHTML.substring(0, 800) };
-        }
-        parent = parent.parentElement;
-      }
-      // If no row found, just return closest parent
-      const p = el.parentElement?.parentElement?.parentElement;
-      return { level: -1, tag: p?.tagName, class: p?.className, html: p?.outerHTML?.substring(0, 800) };
-    });
-
-    // Also get a rosterCategory sample
-    const rosterCat = document.querySelector('.rosterCategory');
-    const rosterCatClasses = rosterCat ? Array.from(rosterCat.querySelectorAll('[class]')).slice(0, 20).map(e => e.className).filter((v, i, a) => a.indexOf(v) === i) : [];
-
-    return {
-      crewElCount: crewEls.length,
-      crewRowHtml,
-      rosterCatClasses,
-      bodyLength: document.body.innerHTML.length,
-    };
-  });
-  console.log("[scraper] Crew debug:", JSON.stringify(debugInfo, null, 2));
-
-  // Expand all collapsed stations by clicking the expand/collapse links
-  const expandButtons = await page.$$('a.plainTextLink[aria-label="Expand/collapse"][aria-expanded="false"]');
-  console.log("[scraper] Found", expandButtons.length, "expand buttons to click");
-
-  for (const btn of expandButtons) {
-    try {
-      await btn.click();
-      await page.waitForTimeout(300);
-    } catch {
-      // Some buttons may not be clickable, skip
-    }
-  }
-
-  // Give time for all expansions to complete
-  console.log("[scraper] Waiting for expansions to settle...");
+  // Expand all stations and trucks
+  await expandAllStations(page);
   await page.waitForTimeout(3000);
 
-  // Parse the page content
+  // Parse using the real Telestaff DOM structure:
+  // - Organization names: div.organizationName > span.bold (District/Station/Truck)
+  // - Crew members: div.nameColumn.resourceDisplay[data-popup-title]
+  // - The DOM is ordered: District > Station > Truck > Crew
   const stations = await page.evaluate((platoonId: string) => {
     const results: {
       station: number;
@@ -176,165 +119,116 @@ async function parseRosterPage(
       }[];
     }[] = [];
 
-    // Get all text content and parse the tree structure
-    const body = document.body.innerHTML;
+    // Collect all organization names and crew members in DOM order
+    // using a TreeWalker for efficient traversal
+    const allOrgNames = document.querySelectorAll(".organizationName span.bold");
+    const allCrew = document.querySelectorAll(".nameColumn.resourceDisplay[data-popup-title]");
 
-    // Strategy: find all station nodes and parse their children
-    // The structure is: District > Station > Truck > Crew rows
-    // Each level is typically a tree node with expandable children
+    // Build a flat ordered list of markers
+    type Marker =
+      | { type: "district"; num: number; el: Element }
+      | { type: "station"; num: number; el: Element }
+      | { type: "truck"; name: string; phone: string; el: Element }
+      | { type: "crew"; name: string; rank: string; quals: string; el: Element };
 
-    // Look for table rows that contain the roster data
-    const allRows = document.querySelectorAll("tr, .rosterRow, .treeNode");
+    const markers: Marker[] = [];
+
+    allOrgNames.forEach((span) => {
+      const text = span.textContent?.trim() || "";
+      const distMatch = text.match(/^District\s+(\d+)$/i);
+      const stnMatch = text.match(/^Station\s+(\d+)$/i);
+
+      if (distMatch) {
+        markers.push({ type: "district", num: parseInt(distMatch[1]), el: span });
+      } else if (stnMatch) {
+        markers.push({ type: "station", num: parseInt(stnMatch[1]), el: span });
+      } else if (text && !text.includes("Fire Rescue") && !text.includes("Monday") && !text.includes("Tuesday") && !text.includes("Wednesday") && !text.includes("Thursday") && !text.includes("Friday") && !text.includes("Saturday") && !text.includes("Sunday")) {
+        // It's a truck/unit name like "Pump 10 {Cell 780-860-6851}"
+        const phoneMatch = text.match(/\{(?:Cell\s*)?([^}]+)\}/);
+        const phone = phoneMatch ? phoneMatch[1].trim() : "";
+        const truckName = text.split("{")[0].trim();
+        markers.push({ type: "truck", name: truckName, phone, el: span });
+      }
+    });
+
+    allCrew.forEach((el) => {
+      const title = el.getAttribute("data-popup-title") || "";
+      const jobTitle = el.getAttribute("data-popup-jobtitle") || "";
+
+      // Parse name from data-popup-title: "LastName, FirstName PositionCode MiddleInit. (quals)"
+      const nameMatch = title.match(/^([^(]+)/);
+      let name = nameMatch ? nameMatch[1].trim() : title;
+      // Extract just "LastName, FirstName"
+      const cleanName = name.match(/^([A-Za-z'-]+,\s*[A-Za-z'-]+)/);
+      if (cleanName) name = cleanName[1];
+
+      const qualMatch = title.match(/\(([^)]+)\)/);
+      const quals = qualMatch ? qualMatch[1] : "";
+
+      markers.push({ type: "crew", name, rank: jobTitle, quals, el });
+    });
+
+    // Sort markers by DOM order
+    markers.sort((a, b) => {
+      const pos = a.el.compareDocumentPosition(b.el);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+
+    // Walk through markers in order to build the station data
     let currentDistrict = 0;
-    let currentStation = 0;
-    let currentTruck = "";
-    let currentPhoneNumber = "";
-    let stationMap = new Map<number, {
-      district: number;
-      trucks: Map<string, {
-        phoneNumber: string;
-        crew: {
-          name: string;
-          rank: string;
-          position: string;
-          employeeId: string;
-          status: string;
-          qualifications: string;
-        }[];
-      }>;
-    }>();
+    let currentStation: typeof results[0] | null = null;
+    let currentTruck: typeof results[0]["trucks"][0] | null = null;
 
-    allRows.forEach((row) => {
-      const text = row.textContent?.trim() || "";
+    for (const marker of markers) {
+      if (marker.type === "district") {
+        currentDistrict = marker.num;
+      } else if (marker.type === "station") {
+        currentStation = {
+          station: marker.num,
+          district: currentDistrict,
+          platoon: platoonId,
+          date: "",
+          trucks: [],
+        };
+        results.push(currentStation);
+        currentTruck = null;
+      } else if (marker.type === "truck" && currentStation) {
+        const lower = marker.name.toLowerCase();
+        let truckType = "Other";
+        if (lower.includes("pump") || lower.includes("engine")) truckType = "Engine";
+        else if (lower.includes("ladder") || lower.includes("tower") || lower.includes("quint")) truckType = "Ladder";
+        else if (lower.includes("rescue")) truckType = "Rescue";
+        else if (lower.includes("medic") || lower.includes("ems")) truckType = "Medic";
+        else if (lower.includes("hazmat") || lower.includes("haz")) truckType = "Hazmat";
+        else if (lower.includes("command") || lower.includes("chief") || lower.includes("battalion")) truckType = "Command";
 
-      // Check if this is a district header
-      const districtMatch = text.match(/District\s*(\d+)/i);
-      if (districtMatch && text.length < 30) {
-        currentDistrict = parseInt(districtMatch[1]);
-        return;
-      }
-
-      // Check if this is a station header
-      const stationMatch = text.match(/Station\s*(\d+)/i);
-      if (stationMatch && text.length < 30) {
-        currentStation = parseInt(stationMatch[1]);
-        if (!stationMap.has(currentStation)) {
-          stationMap.set(currentStation, {
-            district: currentDistrict,
-            trucks: new Map(),
-          });
-        }
-        return;
-      }
-
-      // Check if this is a truck/unit header (e.g., "Pump 10 (Cell:(780) 860-6851)")
-      const truckMatch = text.match(/^(Pump|Engine|Ladder|Tower|Rescue|Hazmat|Haz|Medic|FF|Command|Battalion|Quint)\s*\d*.*?(?:\((?:Cell:)?([\d\-() ]+)\))?/i);
-      if (truckMatch && text.length < 100 && !text.match(/\d{7}/)) {
-        currentTruck = truckMatch[0].split("(")[0].trim();
-        const phoneMatch = text.match(/(?:Cell:)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
-        currentPhoneNumber = phoneMatch ? phoneMatch[0] : "";
-
-        if (currentStation && stationMap.has(currentStation)) {
-          const station = stationMap.get(currentStation)!;
-          if (!station.trucks.has(currentTruck)) {
-            station.trucks.set(currentTruck, {
-              phoneNumber: currentPhoneNumber,
-              crew: [],
-            });
-          }
-        }
-        return;
-      }
-
-      // Check if this row contains a crew member (has a 7-digit employee ID)
-      const empIdMatch = text.match(/\b(\d{7})\b/);
-      if (empIdMatch && currentStation && currentTruck) {
-        const cells = row.querySelectorAll("td, .cell, span");
-        const cellTexts: string[] = [];
-        cells.forEach((cell) => {
-          const t = cell.textContent?.trim();
-          if (t) cellTexts.push(t);
+        currentTruck = {
+          truck: marker.name,
+          type: truckType,
+          phoneNumber: marker.phone,
+          crew: [],
+        };
+        currentStation.trucks.push(currentTruck);
+      } else if (marker.type === "crew" && currentTruck) {
+        currentTruck.crew.push({
+          name: marker.name,
+          rank: marker.rank,
+          position: marker.rank,
+          employeeId: "",
+          status: "",
+          qualifications: marker.quals,
         });
-
-        // Try to parse rank, name, qualifications, employee ID, status
-        let rank = "";
-        let name = "";
-        let qualifications = "";
-        let employeeId = empIdMatch[1];
-        let status = "";
-
-        // Typically: Rank | Name + Quals | EmpID | Status
-        if (cellTexts.length >= 3) {
-          rank = cellTexts[0] || "";
-          // The name/quals cell usually contains "LastName, FirstName PositionCode MiddleInitial. (quals)"
-          const nameQualText = cellTexts[1] || "";
-          const qualMatch = nameQualText.match(/\(([^)]+)\)/);
-          qualifications = qualMatch ? qualMatch[1] : "";
-          name = nameQualText.split("(")[0].trim();
-          // Clean up name — remove position codes like "10-F3"
-          const nameClean = name.match(/^([A-Za-z]+,\s*[A-Za-z]+)/);
-          if (nameClean) {
-            name = nameClean[1];
-          }
-          // Status is usually the cell after employee ID
-          for (let i = 0; i < cellTexts.length; i++) {
-            if (cellTexts[i] === employeeId && i + 1 < cellTexts.length) {
-              status = cellTexts[i + 1];
-              break;
-            }
-          }
-        }
-
-        if (currentStation && stationMap.has(currentStation)) {
-          const station = stationMap.get(currentStation)!;
-          if (station.trucks.has(currentTruck)) {
-            station.trucks.get(currentTruck)!.crew.push({
-              name,
-              rank,
-              position: rank,
-              employeeId,
-              status,
-              qualifications,
-            });
-          }
-        }
       }
-    });
+    }
 
-    // Convert map to array
-    const dateStr = document.querySelector(".roster-date, h1, .rosterHeader")?.textContent?.match(/\d{2}\/\d{2}\/\d{4}/)?.[0] || "";
-
-    stationMap.forEach((data, stationNum) => {
-      const trucks: typeof results[0]["trucks"] = [];
-      data.trucks.forEach((truckData, truckName) => {
-        const lower = truckName.toLowerCase();
-        let type = "Other";
-        if (lower.includes("pump") || lower.includes("engine")) type = "Engine";
-        else if (lower.includes("ladder") || lower.includes("tower") || lower.includes("quint")) type = "Ladder";
-        else if (lower.includes("rescue")) type = "Rescue";
-        else if (lower.includes("medic") || lower.includes("ems")) type = "Medic";
-        else if (lower.includes("hazmat") || lower.includes("haz")) type = "Hazmat";
-        else if (lower.includes("command") || lower.includes("chief")) type = "Command";
-
-        trucks.push({
-          truck: truckName,
-          type,
-          phoneNumber: truckData.phoneNumber,
-          crew: truckData.crew,
-        });
-      });
-
-      results.push({
-        station: stationNum,
-        district: data.district,
-        platoon: platoonId,
-        date: dateStr,
-        trucks,
-      });
-    });
-
-    return results.sort((a, b) => a.station - b.station);
+    return results;
   }, platoon);
+
+  console.log("[scraper] Parsed", stations.length, "stations with",
+    stations.reduce((sum, s) => sum + s.trucks.length, 0), "trucks and",
+    stations.reduce((sum, s) => sum + s.trucks.reduce((t, u) => t + u.crew.length, 0), 0), "crew");
 
   return stations as StationStaffing[];
 }
@@ -350,7 +244,6 @@ export async function scrapeRoster(
   const page = await context.newPage();
 
   try {
-    // Login
     await login(page, username, password);
 
     // Navigate to roster page
@@ -360,34 +253,11 @@ export async function scrapeRoster(
     await page.goto(rosterUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForTimeout(2000);
 
-    // Select platoon from Bootstrap dropdown: click #rosterView button, then click the option
-    const viewId = PLATOON_ROSTER_VIEW_IDS[platoon];
-    console.log("[scraper] Clicking #rosterView dropdown...");
-    await page.click("#rosterView", { timeout: 10000 });
-    await page.waitForTimeout(500);
-    console.log("[scraper] Dropdown opened, selecting platoon value:", viewId);
-
-    // Clicking the platoon triggers a page navigation — wait for it
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 30000 }),
-      page.click(`a[value="${viewId}"]`),
-    ]);
-    console.log("[scraper] Page navigated after platoon select, URL:", page.url());
-
-    // Wait for the roster data to load
-    console.log("[scraper] Waiting for roster data...");
-    await page.waitForTimeout(10000);
-
-    const tableLength = await page.evaluate(() => {
-      const table = document.getElementById("tableGrid");
-      return table ? table.innerHTML.trim().length : 0;
-    });
-    console.log("[scraper] Table content length:", tableLength);
+    // Select platoon from dropdown
+    await selectPlatoon(page, platoon);
 
     // Parse the roster
     const stations = await parseRosterPage(page, platoon, date || formatDate());
-    console.log("[scraper] Parsed", stations.length, "stations");
-
     return stations;
   } finally {
     await context.close();
@@ -405,7 +275,6 @@ export async function scrapeStationFromRoster(
   return allStations.find((s) => s.station === station) || null;
 }
 
-// Cleanup browser on process exit
 process.on("beforeExit", async () => {
   if (browser) {
     await browser.close();
