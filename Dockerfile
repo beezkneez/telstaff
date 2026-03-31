@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/playwright:v1.58.2-noble
 
+# Cache bust: 2026-03-31-v2
 WORKDIR /app
 
 # Copy package files
