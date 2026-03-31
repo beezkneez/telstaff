@@ -42,15 +42,15 @@ export function getShiftInfo(date: Date | string, platoon: string): ShiftInfo {
   // 10-15: Long Off (6 days)
 
   if (cycleDay <= 1) {
-    return { type: "day", block: 1, dayInBlock: cycleDay + 1, label: `Block 1 Day ${cycleDay + 1}` };
+    return { type: "day", block: 1, dayInBlock: cycleDay + 1, label: `Day ${cycleDay + 1}` };
   } else if (cycleDay <= 3) {
-    return { type: "night", block: 1, dayInBlock: cycleDay - 1, label: `Block 1 Night ${cycleDay - 1}` };
+    return { type: "night", block: 1, dayInBlock: cycleDay - 1, label: `Night ${cycleDay - 1}` };
   } else if (cycleDay <= 5) {
     return { type: "off-short", block: 0, dayInBlock: cycleDay - 3, label: `Off (${cycleDay - 3}/2)` };
   } else if (cycleDay <= 7) {
-    return { type: "day", block: 2, dayInBlock: cycleDay - 5, label: `Block 2 Day ${cycleDay - 5}` };
+    return { type: "day", block: 2, dayInBlock: cycleDay - 5, label: `Day ${cycleDay - 5}` };
   } else if (cycleDay <= 9) {
-    return { type: "night", block: 2, dayInBlock: cycleDay - 7, label: `Block 2 Night ${cycleDay - 7}` };
+    return { type: "night", block: 2, dayInBlock: cycleDay - 7, label: `Night ${cycleDay - 7}` };
   } else {
     return { type: "off-long", block: 0, dayInBlock: cycleDay - 9, label: `Off (${cycleDay - 9}/6)` };
   }
