@@ -171,17 +171,27 @@ async function runNightlyScrape(): Promise<void> {
     }
   }
 
-  // Scrape OTWP for each platoon's last 6-off eligible days
+  // Scrape OTWP for today + yesterday + each platoon's last 6-off eligible days
   const otwpDatesScraped = new Set<string>();
+  const today = now.toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  // Always scrape today and yesterday
+  for (const d of [today, yesterday]) {
+    if (!otwpDatesScraped.has(d)) {
+      otwpDatesScraped.add(d);
+      await scrapeAndCacheOTWP(creds.username, creds.password, d, "", "both");
+    }
+  }
+
+  // Scrape each platoon's last 6-off eligible days
   for (const platoon of ["1", "2", "3", "4"]) {
-    const today = now.toISOString().split("T")[0];
     const last6Off = getLast6Off(today, platoon);
     const eligibleDates = last6Off.dates.filter((_, i) => last6Off.eligible[i]);
 
     for (const d of eligibleDates) {
-      const key = d;
-      if (otwpDatesScraped.has(key)) continue;
-      otwpDatesScraped.add(key);
+      if (otwpDatesScraped.has(d)) continue;
+      otwpDatesScraped.add(d);
       await scrapeAndCacheOTWP(creds.username, creds.password, d, "", "both");
     }
   }

@@ -109,6 +109,13 @@ export default function AdminPage() {
     showMessage("Scrape triggered — check logs");
   }
 
+  async function backfillYTD() {
+    if (!confirm("Backfill OTWP data from Jan 1 to today? This runs in the background and may take 1-2 hours.")) return;
+    const res = await fetch("/api/admin/backfill", { method: "POST" });
+    const data = await res.json();
+    showMessage(`${data.message}`);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -244,12 +251,20 @@ export default function AdminPage() {
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
                 Cache
               </h2>
-              <button
-                onClick={clearCache}
-                className="px-3 py-1.5 bg-alert-red/20 border border-alert-red/30 text-alert-red font-mono text-[10px] tracking-wider uppercase hover:bg-alert-red/30 transition-all"
-              >
-                Clear All
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={backfillYTD}
+                  className="px-3 py-1.5 bg-ember/20 border border-ember/30 text-ember font-mono text-[10px] tracking-wider uppercase hover:bg-ember/30 transition-all"
+                >
+                  Backfill YTD
+                </button>
+                <button
+                  onClick={clearCache}
+                  className="px-3 py-1.5 bg-alert-red/20 border border-alert-red/30 text-alert-red font-mono text-[10px] tracking-wider uppercase hover:bg-alert-red/30 transition-all"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
             <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
