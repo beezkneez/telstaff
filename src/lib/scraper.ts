@@ -120,23 +120,12 @@ async function parseRosterPage(
       }[];
     }[] = [];
 
+    // Stations/Districts from .organizationName
     const allOrgNames = document.querySelectorAll(".organizationName span.bold");
+    // Trucks from ALL span.bold (not just in .organizationName)
+    const allBoldSpans = document.querySelectorAll("span.bold");
+    // Crew from displayNameText
     const allCrewNames = document.querySelectorAll(".displayNameText");
-
-    // Inject debug info into results for logging
-    (window as any).__parserDebug = {
-      orgCount: allOrgNames.length,
-      crewCount: allCrewNames.length,
-      sampleOrgs: Array.from(allOrgNames).slice(0, 5).map(e => e.textContent?.trim()),
-      sampleCrew: Array.from(allCrewNames).slice(0, 3).map(e => e.textContent?.trim()?.substring(0, 60)),
-      // Check for alternative crew selectors
-      altCounts: {
-        displayNameText: document.querySelectorAll(".displayNameText").length,
-        fixLength: document.querySelectorAll(".fixLength").length,
-        resourceDisplay: document.querySelectorAll(".resourceDisplay").length,
-        positionNameText: document.querySelectorAll(".positionNameText").length,
-      }
-    };
 
     type Marker =
       | { type: "district"; num: number; el: Element }
@@ -146,6 +135,7 @@ async function parseRosterPage(
 
     const markers: Marker[] = [];
 
+    // Parse Districts and Stations from .organizationName
     allOrgNames.forEach((span) => {
       const text = span.textContent?.trim() || "";
       const distMatch = text.match(/^District\s+(\d+)$/i);
@@ -155,12 +145,16 @@ async function parseRosterPage(
         markers.push({ type: "district", num: parseInt(distMatch[1]), el: span });
       } else if (stnMatch) {
         markers.push({ type: "station", num: parseInt(stnMatch[1]), el: span });
-      } else if (text && !text.match(/Fire Rescue|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday/i)) {
-        // Truck/unit name like "Pump 10 {Cell:(780) 860-6851}"
+      }
+    });
+
+    // Parse Trucks from ALL span.bold — match truck name patterns
+    const truckPattern = /^(Pump|Engine|Ladder|Tower|Rescue|Hazmat|Haz|Medic|FF|Command|Battalion|Quint|Aerial|Squad|District Chief|DC)\s/i;
+    allBoldSpans.forEach((span) => {
+      const text = span.textContent?.trim() || "";
+      if (truckPattern.test(text)) {
         const truckName = text.split("{")[0].trim();
-        if (truckName) {
-          markers.push({ type: "truck", name: truckName, phone: "", el: span });
-        }
+        markers.push({ type: "truck", name: truckName, phone: "", el: span });
       }
     });
 
@@ -248,10 +242,6 @@ async function parseRosterPage(
 
     return results;
   }, platoon);
-
-  // Get debug info from inside evaluate
-  const parserDebug = await page.evaluate(() => (window as any).__parserDebug);
-  console.log("[scraper] Parser debug:", JSON.stringify(parserDebug));
 
   console.log("[scraper] Parsed", stations.length, "stations with",
     stations.reduce((sum, s) => sum + s.trucks.length, 0), "trucks and",
