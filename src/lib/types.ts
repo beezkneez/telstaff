@@ -9,7 +9,7 @@ export interface CrewMember {
 
 export interface TruckAssignment {
   truck: string;
-  type: "Engine" | "Ladder" | "Rescue" | "Medic" | "Hazmat" | "Command" | "Other";
+  type: "Engine" | "Ladder" | "Rescue" | "Medic" | "Hazmat" | "Command" | "OffRoster" | "Other";
   phoneNumber?: string;
   crew: CrewMember[];
 }

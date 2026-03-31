@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [rotationInfo, setRotationInfo] = useState<RotationInfo | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Load user's home platoon and station
   useEffect(() => {
@@ -165,11 +166,36 @@ export default function DashboardPage() {
               {displayDate}
             </p>
           </div>
-          <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider text-muted uppercase">
-            <span
-              className={`w-2 h-2 ${loading ? "bg-amber" : "bg-success"} animate-pulse-ember`}
-            />
-            {loading ? "Scraping telestaff..." : "Live feed // telestaff"}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider text-muted uppercase">
+              <span
+                className={`w-2 h-2 ${loading || refreshing ? "bg-amber" : "bg-success"} animate-pulse-ember`}
+              />
+              {loading ? "Scraping telestaff..." : refreshing ? "Refreshing..." : "Live feed // telestaff"}
+            </div>
+            <button
+              onClick={async () => {
+                if (refreshing || loading || !platoon) return;
+                setRefreshing(true);
+                try {
+                  const res = await fetch("/api/stations/refresh", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ platoon, date: selectedDate }),
+                  });
+                  if (res.ok) {
+                    await fetchData();
+                  }
+                } catch {} finally {
+                  setRefreshing(false);
+                }
+              }}
+              disabled={refreshing || loading}
+              className="px-2 py-1 font-mono text-[9px] tracking-wider uppercase border border-border hover:border-ember/40 text-muted hover:text-ember transition-all disabled:opacity-30"
+              title="Manual refresh — re-scrape current view"
+            >
+              {refreshing ? "..." : "REFRESH"}
+            </button>
           </div>
         </div>
       </div>

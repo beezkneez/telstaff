@@ -13,7 +13,8 @@ interface UserInfo {
 }
 
 interface Settings {
-  cronTime: string;
+  cronTime1: string;
+  cronTime2: string;
   cronEnabled: boolean;
   daysBack: number;
   daysAhead: number;
@@ -170,16 +171,30 @@ export default function AdminPage() {
                 </button>
               </div>
             </div>
-            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-5 gap-4">
               <div>
                 <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
-                  Cron (UTC)
+                  Scrape 1 (UTC)
                 </label>
                 <input
-                  value={settings.cronTime}
-                  onChange={(e) => setSettings({ ...settings, cronTime: e.target.value })}
+                  value={settings.cronTime1}
+                  onChange={(e) => setSettings({ ...settings, cronTime1: e.target.value })}
                   className="w-full px-3 py-2 bg-background border border-border font-mono text-xs text-foreground"
+                  placeholder="0 13 * * *"
                 />
+                <p className="font-mono text-[8px] text-muted mt-1">7 AM MT</p>
+              </div>
+              <div>
+                <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                  Scrape 2 (UTC)
+                </label>
+                <input
+                  value={settings.cronTime2}
+                  onChange={(e) => setSettings({ ...settings, cronTime2: e.target.value })}
+                  className="w-full px-3 py-2 bg-background border border-border font-mono text-xs text-foreground"
+                  placeholder="0 23 * * *"
+                />
+                <p className="font-mono text-[8px] text-muted mt-1">5 PM MT</p>
               </div>
               <div>
                 <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">

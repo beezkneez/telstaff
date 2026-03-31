@@ -88,14 +88,16 @@ export async function PUT(req: Request) {
     const settings = await prisma.appSettings.upsert({
       where: { id: "singleton" },
       update: {
-        cronTime: body.cronTime,
+        cronTime1: body.cronTime1,
+        cronTime2: body.cronTime2,
         cronEnabled: body.cronEnabled,
         daysBack: body.daysBack,
         daysAhead: body.daysAhead,
       },
       create: {
         id: "singleton",
-        cronTime: body.cronTime,
+        cronTime1: body.cronTime1,
+        cronTime2: body.cronTime2,
         cronEnabled: body.cronEnabled,
         daysBack: body.daysBack,
         daysAhead: body.daysAhead,

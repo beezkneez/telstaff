@@ -193,17 +193,23 @@ export function initCron(): void {
   if (initialized) return;
   initialized = true;
 
-  // Run at 11:00 PM Mountain Time daily
-  // MDT = UTC-6, so 11 PM MDT = 5:00 AM UTC next day
-  // MST = UTC-7, so 11 PM MST = 6:00 AM UTC next day
-  // Use 5:00 AM UTC (11 PM MDT)
-  cron.schedule("0 5 * * *", () => {
+  // 7:00 AM MT = 13:00 UTC (shift start)
+  cron.schedule("0 13 * * *", () => {
+    console.log("[cron] Running 7 AM scrape...");
     runNightlyScrape().catch((err) =>
-      console.error("[cron] Nightly scrape error:", err)
+      console.error("[cron] 7 AM scrape error:", err)
     );
   });
 
-  console.log("[cron] Scheduled: 11:00 PM MT daily");
+  // 5:00 PM MT = 23:00 UTC (evening refresh)
+  cron.schedule("0 23 * * *", () => {
+    console.log("[cron] Running 5 PM scrape...");
+    runNightlyScrape().catch((err) =>
+      console.error("[cron] 5 PM scrape error:", err)
+    );
+  });
+
+  console.log("[cron] Scheduled: 7:00 AM & 5:00 PM MT daily");
 
   // Run immediately on startup if no recent data
   setTimeout(() => {
