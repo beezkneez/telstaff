@@ -28,11 +28,11 @@ async function login(
   await page.fill("#username", username);
   await page.fill("#password", password);
 
-  // Submit the login form — Telestaff uses JS-based login
-  await page.click('button[type="submit"], input[type="submit"], .login-btn, #loginBtn');
+  // Submit the login form — click "Sign In" button by text
+  await page.getByRole("button", { name: "Sign In" }).click();
 
-  // Wait for navigation after login
-  await page.waitForURL("**/telestaff/**", { timeout: 15000 });
+  // Wait for navigation after login — should redirect to dashboard or similar
+  await page.waitForURL("**/telestaff/dashboard**", { timeout: 30000 });
 }
 
 function formatDate(date?: string): string {
