@@ -31,8 +31,11 @@ async function login(
   // Submit the login form — click "Sign In" button by text
   await page.getByRole("button", { name: "Sign In" }).click();
 
-  // Wait for navigation after login — should redirect to dashboard or similar
-  await page.waitForURL("**/telestaff/dashboard**", { timeout: 30000 });
+  // Wait for the login page to go away (URL changes from /login)
+  await page.waitForFunction(
+    () => !window.location.href.includes("/login"),
+    { timeout: 30000 }
+  );
 }
 
 function formatDate(date?: string): string {
