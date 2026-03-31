@@ -28,7 +28,17 @@ interface StationStaffing {
   platoon: string;
   date: string;
   trucks: TruckAssignment[];
-  mock?: boolean;
+}
+
+interface ShiftInfo {
+  type: string;
+  label: string;
+}
+
+interface RotationInfo {
+  shift: ShiftInfo;
+  isWorking: boolean;
+  nextShift?: { date: string; type: string; block: number } | null;
 }
 
 type ViewMode = "my-station" | "all-stations";
@@ -36,19 +46,20 @@ type ViewMode = "my-station" | "all-stations";
 export default function DashboardPage() {
   const { data: session } = useSession();
   const [platoon, setPlatoon] = useState("");
+  const [homePlatoon, setHomePlatoon] = useState("");
   const [station, setStation] = useState(1);
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
-    return now.toISOString().split("T")[0]; // YYYY-MM-DD
+    return now.toISOString().split("T")[0];
   });
   const [viewMode, setViewMode] = useState<ViewMode>("my-station");
   const [allStations, setAllStations] = useState<StationStaffing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isMock, setIsMock] = useState(true);
   const [error, setError] = useState("");
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [rotationInfo, setRotationInfo] = useState<RotationInfo | null>(null);
 
-  // Load user's home platoon and station on first load
+  // Load user's home platoon and station
   useEffect(() => {
     async function loadDefaults() {
       try {
@@ -56,16 +67,21 @@ export default function DashboardPage() {
         if (res.ok) {
           const data = await res.json();
           if (data.profile) {
-            setPlatoon(data.profile.platoon || "1");
+            const plt = data.profile.platoon || "1";
+            setPlatoon(plt);
+            setHomePlatoon(plt);
             setStation(data.profile.homeStation || 1);
           } else {
             setPlatoon("1");
+            setHomePlatoon("1");
           }
         } else {
           setPlatoon("1");
+          setHomePlatoon("1");
         }
       } catch {
         setPlatoon("1");
+        setHomePlatoon("1");
       } finally {
         setProfileLoaded(true);
       }
@@ -73,29 +89,47 @@ export default function DashboardPage() {
     loadDefaults();
   }, []);
 
-  const displayDate = new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  // Fetch rotation info when platoon or date changes
+  useEffect(() => {
+    if (!platoon) return;
+    fetch(`/api/rotation?date=${selectedDate}&platoon=${platoon}`)
+      .then((r) => r.json())
+      .then((data) => setRotationInfo(data))
+      .catch(() => setRotationInfo(null));
+  }, [platoon, selectedDate]);
+
+  const displayDate = new Date(selectedDate + "T12:00:00").toLocaleDateString(
+    "en-US",
+    { weekday: "long", year: "numeric", month: "long", day: "numeric" }
+  );
 
   const fetchData = useCallback(async () => {
     if (!platoon) return;
     setLoading(true);
     setError("");
-    setIsMock(false);
 
     try {
-      const res = await fetch(`/api/stations?platoon=${platoon}&date=${selectedDate}`);
+      const res = await fetch(
+        `/api/stations?platoon=${platoon}&date=${selectedDate}`
+      );
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Failed to load staffing data");
       }
 
       const data = await res.json();
-      const stations: StationStaffing[] = Array.isArray(data) ? data : [data];
+      const stations: StationStaffing[] = Array.isArray(data)
+        ? data
+        : [data];
       setAllStations(stations);
+
+      // Background prefetch other platoons
+      const otherPlatoons = ["1", "2", "3", "4"].filter((p) => p !== platoon);
+      fetch("/api/stations/prefetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platoons: otherPlatoons, date: selectedDate }),
+      }).catch(() => {}); // fire and forget
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load data";
       setError(msg);
@@ -115,6 +149,9 @@ export default function DashboardPage() {
       ? allStations.find((s) => s.station === station) || null
       : null;
 
+  const isOff = rotationInfo && !rotationInfo.isWorking;
+  const nextShift = rotationInfo?.nextShift;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
       {/* Header */}
@@ -124,22 +161,46 @@ export default function DashboardPage() {
             <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-[0.1em]">
               OPS<span className="text-ember">//</span>BOARD
             </h1>
-            <p className="font-mono text-[11px] tracking-[0.15em] text-muted mt-1 uppercase">{displayDate}</p>
+            <p className="font-mono text-[11px] tracking-[0.15em] text-muted mt-1 uppercase">
+              {displayDate}
+            </p>
           </div>
           <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider text-muted uppercase">
             <span
               className={`w-2 h-2 ${loading ? "bg-amber" : "bg-success"} animate-pulse-ember`}
             />
-            {loading
-              ? "Scraping telestaff..."
-              : "Live feed // telestaff"}
+            {loading ? "Scraping telestaff..." : "Live feed // telestaff"}
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-md bg-alert-red/10 border border-alert-red/20 text-alert-red text-sm">
+        <div className="mb-4 p-3 bg-alert-red/10 border border-alert-red/20 text-alert-red text-sm font-mono">
           {error}
+        </div>
+      )}
+
+      {/* Rotation info banner */}
+      {isOff && !loading && (
+        <div className="mb-4 p-4 bg-surface border border-border animate-fade-slide-up">
+          <div className="flex items-center gap-3">
+            <span className="w-2 h-2 bg-amber" />
+            <div className="font-mono text-xs tracking-wider">
+              <span className="text-amber uppercase">PLT-{platoon} is off</span>
+              <span className="text-muted"> — {rotationInfo?.shift.label}</span>
+              {nextShift && (
+                <span className="text-foreground">
+                  {" "}// Next shift:{" "}
+                  {new Date(nextShift.date + "T12:00:00").toLocaleDateString(
+                    "en-US",
+                    { weekday: "short", month: "short", day: "numeric" }
+                  )}{" "}
+                  ({nextShift.type === "day" ? "Day" : "Night"} — Block{" "}
+                  {nextShift.block})
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -185,29 +246,38 @@ export default function DashboardPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="flex items-center gap-3 text-muted">
-            <svg
-              className="animate-spin h-5 w-5 text-ember"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-            Loading staffing data...
-          </div>
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <svg
+            className="animate-spin h-6 w-6 text-ember"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          <p className="font-mono text-xs tracking-wider text-muted uppercase">
+            Scraping PLT-{platoon} from Telestaff...
+          </p>
+          <p className="font-mono text-[10px] text-muted/50">
+            First load ~30-60s // cached for 15 min after
+          </p>
+        </div>
+      ) : allStations.length === 0 ? (
+        <div className="text-center py-20">
+          <p className="font-mono text-sm text-muted">
+            No staffing data found for PLT-{platoon} on this date.
+          </p>
         </div>
       ) : viewMode === "my-station" ? (
         selectedStation ? (
@@ -219,7 +289,9 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="text-center py-20 text-muted">
-            <p>No data for Station {station}. Try a different station or platoon.</p>
+            <p className="font-mono text-sm">
+              No data for Station {station}. Try a different station.
+            </p>
           </div>
         )
       ) : (
@@ -236,16 +308,51 @@ export default function DashboardPage() {
       )}
 
       {/* Stats bar */}
-      {viewMode === "all-stations" && allStations.length > 0 && (
+      {!loading && viewMode === "all-stations" && allStations.length > 0 && (
         <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-px animate-fade-slide-up delay-300">
           {[
-            { value: allStations.length, label: "Stations Active", color: "text-ember" },
-            { value: allStations.reduce((sum, s) => sum + s.trucks.length, 0), label: "Units in Service", color: "text-foreground" },
-            { value: allStations.reduce((sum, s) => sum + s.trucks.reduce((t, u) => t + u.crew.length, 0), 0), label: "Total Personnel", color: "text-foreground" },
-            { value: `PLT-${platoon}`, label: "Viewing", color: "text-success" },
+            {
+              value: allStations.length,
+              label: "Stations Active",
+              color: "text-ember",
+            },
+            {
+              value: allStations.reduce(
+                (sum, s) => sum + s.trucks.length,
+                0
+              ),
+              label: "Units in Service",
+              color: "text-foreground",
+            },
+            {
+              value: allStations.reduce(
+                (sum, s) =>
+                  sum +
+                  s.trucks.reduce((t, u) => t + u.crew.length, 0),
+                0
+              ),
+              label: "Total Personnel",
+              color: "text-foreground",
+            },
+            {
+              value: `PLT-${platoon}`,
+              label: rotationInfo
+                ? rotationInfo.isWorking
+                  ? rotationInfo.shift.type === "day"
+                    ? "Day Shift"
+                    : "Night Shift"
+                  : "Off Duty"
+                : "Viewing",
+              color: "text-success",
+            },
           ].map((stat) => (
-            <div key={stat.label} className="bg-surface border border-border p-4">
-              <p className={`font-display text-2xl font-bold tracking-wider ${stat.color}`}>
+            <div
+              key={stat.label}
+              className="bg-surface border border-border p-4"
+            >
+              <p
+                className={`font-display text-2xl font-bold tracking-wider ${stat.color}`}
+              >
                 {stat.value}
               </p>
               <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted mt-1">
