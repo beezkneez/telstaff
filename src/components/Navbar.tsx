@@ -20,7 +20,7 @@ export default function Navbar() {
               </svg>
             </div>
             <span className="font-display text-base font-semibold tracking-[0.2em] hidden sm:block">
-              TELSTAFF<span className="text-ember">//</span>
+              TELESTAFF<span className="text-ember">//RVP</span>
             </span>
           </Link>
 

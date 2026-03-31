@@ -78,7 +78,7 @@ export default function RegisterPage() {
                 </svg>
               </div>
               <span className="font-display text-2xl font-bold tracking-wide">
-                TELSTAFF<span className="text-ember">VIEWER</span>
+                TELESTAFF<span className="text-ember">REVAMPED</span>
               </span>
             </Link>
             <h1 className="font-display text-2xl font-bold tracking-wide">
