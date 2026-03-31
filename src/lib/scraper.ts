@@ -149,7 +149,7 @@ async function parseRosterPage(
     });
 
     // Parse Trucks from ALL span.bold — match truck name patterns
-    const truckPattern = /^(Pump|Engine|Ladder|Tower|Rescue|Hazmat|Haz|Medic|FF|Command|Battalion|Quint|Aerial|Squad|Tanker|District Chief|DC)\s/i;
+    const truckPattern = /^(Pump|Engine|Ladder|Tower|Rescue|Hazmat|Haz|Medic|FF|Command|Battalion|Quint|Aerial|Squad|Tanker|ATP|District Chief|DC)\s/i;
     allBoldSpans.forEach((span) => {
       const text = span.textContent?.trim() || "";
       if (truckPattern.test(text)) {

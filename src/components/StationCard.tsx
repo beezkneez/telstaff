@@ -17,14 +17,14 @@ interface TruckAssignment {
 
 const TRUCK_COLORS: Record<string, { accent: string; bg: string }> = {
   Engine: { accent: "text-red-400", bg: "bg-red-500/5 border-red-500/10" },
-  Ladder: { accent: "text-amber-400", bg: "bg-amber-500/5 border-amber-500/10" },
-  Rescue: { accent: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/10" },
+  Ladder: { accent: "text-green-400", bg: "bg-green-500/5 border-green-500/10" },
+  Rescue: { accent: "text-orange-400", bg: "bg-orange-500/5 border-orange-500/10" },
+  Tanker: { accent: "text-yellow-400", bg: "bg-yellow-500/5 border-yellow-500/10" },
+  Hazmat: { accent: "text-fuchsia-400", bg: "bg-gradient-to-r from-red-500/5 via-yellow-500/5 to-blue-500/5 border-fuchsia-500/10" },
   Medic: { accent: "text-blue-400", bg: "bg-blue-500/5 border-blue-500/10" },
-  Hazmat: { accent: "text-yellow-400", bg: "bg-yellow-500/5 border-yellow-500/10" },
-  Tanker: { accent: "text-orange-400", bg: "bg-orange-500/5 border-orange-500/10" },
   Command: { accent: "text-purple-400", bg: "bg-purple-500/5 border-purple-500/10" },
   OffRoster: { accent: "text-muted", bg: "bg-surface-overlay/30 border-border-subtle" },
-  Other: { accent: "text-muted", bg: "bg-surface-overlay/50 border-border" },
+  Other: { accent: "text-blue-400", bg: "bg-blue-500/5 border-blue-500/10" },
 };
 
 interface StationCardProps {
