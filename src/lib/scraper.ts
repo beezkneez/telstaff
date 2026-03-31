@@ -99,44 +99,43 @@ async function parseRosterPage(
   // Give the roster data time to fully populate
   await page.waitForTimeout(5000);
 
-  // Debug: dump the actual page structure where station data lives
+  // Debug: find a crew member element to understand the row structure
   const debugInfo = await page.evaluate(() => {
-    // Find elements containing "Station" text
-    const stationEls = Array.from(document.querySelectorAll('*')).filter(
-      el => el.textContent?.trim().match(/^Station\s+\d+$/) && el.children.length === 0
-    ).slice(0, 3);
+    // Find elements with 7-digit employee IDs (crew members)
+    const allEls = Array.from(document.querySelectorAll('*'));
+    const crewEls = allEls.filter(el => {
+      const text = el.textContent?.trim() || "";
+      return text.match(/^\d{7}$/) && el.children.length === 0;
+    }).slice(0, 2);
 
-    // Get parent chain for the first station element
-    let parentChain = "";
-    if (stationEls[0]) {
-      let el: Element | null = stationEls[0];
-      for (let i = 0; i < 5 && el; i++) {
-        parentChain += `${el.tagName}.${el.className} #${el.id} > `;
-        el = el.parentElement;
+    // Get the crew row structure — go up to find the containing row
+    const crewRowHtml = crewEls.map(el => {
+      // Walk up to find a row-like container
+      let parent = el.parentElement;
+      for (let i = 0; i < 8 && parent; i++) {
+        const cls = parent.className || "";
+        if (cls.includes("row") || cls.includes("Row") || cls.includes("person") || cls.includes("Person") || cls.includes("slot") || cls.includes("Slot") || parent.tagName === "TR") {
+          return { level: i, tag: parent.tagName, class: parent.className, html: parent.outerHTML.substring(0, 800) };
+        }
+        parent = parent.parentElement;
       }
-    }
+      // If no row found, just return closest parent
+      const p = el.parentElement?.parentElement?.parentElement;
+      return { level: -1, tag: p?.tagName, class: p?.className, html: p?.outerHTML?.substring(0, 800) };
+    });
 
-    // Find "Pump" or crew-related elements
-    const pumpEls = Array.from(document.querySelectorAll('*')).filter(
-      el => el.textContent?.trim().startsWith('Pump ') && el.children.length === 0
-    ).slice(0, 2);
-
-    // Get a chunk of HTML around Station 10 if found
-    const stn10 = Array.from(document.querySelectorAll('*')).find(
-      el => el.textContent?.trim() === 'Station 10' && el.children.length === 0
-    );
-    const stn10Parent = stn10?.closest('tr, div, li, section') || stn10?.parentElement?.parentElement;
+    // Also get a rosterCategory sample
+    const rosterCat = document.querySelector('.rosterCategory');
+    const rosterCatClasses = rosterCat ? Array.from(rosterCat.querySelectorAll('[class]')).slice(0, 20).map(e => e.className).filter((v, i, a) => a.indexOf(v) === i) : [];
 
     return {
-      stationCount: stationEls.length,
-      stationTexts: stationEls.map(el => ({ tag: el.tagName, class: el.className, text: el.textContent?.trim() })),
-      parentChain,
-      pumpTexts: pumpEls.map(el => ({ tag: el.tagName, class: el.className, text: el.textContent?.trim().substring(0, 80) })),
-      stn10ParentHtml: stn10Parent?.outerHTML?.substring(0, 1500) || "not found",
+      crewElCount: crewEls.length,
+      crewRowHtml,
+      rosterCatClasses,
       bodyLength: document.body.innerHTML.length,
     };
   });
-  console.log("[scraper] Page debug:", JSON.stringify(debugInfo, null, 2));
+  console.log("[scraper] Crew debug:", JSON.stringify(debugInfo, null, 2));
 
   // Expand all collapsed stations by clicking the expand/collapse links
   const expandButtons = await page.$$('a.plainTextLink[aria-label="Expand/collapse"][aria-expanded="false"]');
