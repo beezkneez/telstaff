@@ -29,6 +29,7 @@ export default function Navbar() {
             {[
               { href: "/dashboard", label: "OPS" },
               { href: "/dashboard/overtime", label: "OVERTIME" },
+              { href: "/dashboard/paybacks", label: "PAYBACKS" },
               { href: "/profile", label: "PROFILE" },
             ].map((item) => (
               <Link
@@ -75,6 +76,7 @@ export default function Navbar() {
             {[
               { href: "/dashboard", label: "Operations" },
               { href: "/dashboard/overtime", label: "Overtime" },
+              { href: "/dashboard/paybacks", label: "Paybacks" },
               { href: "/profile", label: "Profile" },
             ].map((item) => (
               <Link
