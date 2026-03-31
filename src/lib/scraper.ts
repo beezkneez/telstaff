@@ -337,10 +337,16 @@ export async function scrapeRoster(
     await page.click("#rosterView", { timeout: 10000 });
     await page.waitForTimeout(500);
     console.log("[scraper] Dropdown opened, selecting platoon value:", viewId);
-    await page.click(`a[value="${viewId}"]`, { timeout: 10000 });
-    console.log("[scraper] Platoon selected, waiting for data to load...");
 
-    // Wait for stations to load (~10 seconds)
+    // Clicking the platoon triggers a page navigation — wait for it
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 30000 }),
+      page.click(`a[value="${viewId}"]`),
+    ]);
+    console.log("[scraper] Page navigated after platoon select, URL:", page.url());
+
+    // Wait for the roster data to load
+    console.log("[scraper] Waiting for roster data...");
     await page.waitForTimeout(10000);
 
     const tableLength = await page.evaluate(() => {
