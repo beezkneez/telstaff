@@ -129,9 +129,11 @@ export async function PUT(req: Request) {
   }
 
   if (body.action === "trigger-scrape") {
-    // Trigger a manual scrape in the background
-    import("@/lib/cron").then(({ initCron }) => initCron()).catch(console.error);
-    return NextResponse.json({ status: "Scrape triggered" });
+    // Trigger a full scrape in the background — bypasses cache check
+    import("@/lib/cron").then(({ runNightlyScrape }) => {
+      runNightlyScrape().catch(console.error);
+    }).catch(console.error);
+    return NextResponse.json({ status: "Full scrape triggered — check logs" });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });

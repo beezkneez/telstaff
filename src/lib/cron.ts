@@ -143,7 +143,7 @@ async function scrapeAndCacheOTWP(
   }
 }
 
-async function runNightlyScrape(): Promise<void> {
+export async function runNightlyScrape(): Promise<void> {
   console.log("[cron] Starting nightly scrape...");
 
   const creds = await getSystemCredentials();
