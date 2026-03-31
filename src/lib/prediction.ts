@@ -51,13 +51,16 @@ export function isNearStatHoliday(date: string): { near: boolean; holiday: strin
 
 // Required crew per truck type
 export const REQUIRED_CREW: Record<string, number> = {
-  Engine: 4,  // 1 captain + 3 FF
-  Pump: 4,
-  Ladder: 4,  // 1 captain + 3 FF
-  Hazmat: 5,  // 1 captain + 4 FF
-  Tanker: 2,  // 1 captain + 1 FF
-  Rescue: 4,  // 1 captain + 3 FF
-  Medic: 2,
+  Engine: 4,    // 1 captain + 3 FF
+  Pump: 4,      // 1 captain + 3 FF
+  Ladder: 4,    // 1 captain + 3 FF
+  Aerial: 4,    // 1 captain + 3 FF
+  Hazmat: 5,    // 1 captain + 4 FF
+  Tanker: 2,    // 1 captain + 1 FF
+  Rescue: 4,    // 1 captain + 3 FF
+  Medic: 2,     // 1 captain + 1 FF
+  Command: 1,
+  Squad: 4,
 };
 
 // Day-of-week call-through multiplier
