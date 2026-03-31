@@ -96,8 +96,9 @@ async function parseRosterPage(
 
   // Parse using the real Telestaff DOM structure:
   // - Organization names: div.organizationName > span.bold (District/Station/Truck)
-  // - Crew members: div.nameColumn.resourceDisplay[data-popup-title]
-  // - The DOM is ordered: District > Station > Truck > Crew
+  // - Crew rank: span.positionNameText
+  // - Crew name: div.displayNameText
+  // - All in DOM order: District > Station > Truck > Crew
   const stations = await page.evaluate((platoonId: string) => {
     const results: {
       station: number;
@@ -119,12 +120,9 @@ async function parseRosterPage(
       }[];
     }[] = [];
 
-    // Collect all organization names and crew members in DOM order
-    // using a TreeWalker for efficient traversal
     const allOrgNames = document.querySelectorAll(".organizationName span.bold");
-    const allCrew = document.querySelectorAll(".nameColumn.resourceDisplay[data-popup-title]");
+    const allCrewNames = document.querySelectorAll("div.displayNameText");
 
-    // Build a flat ordered list of markers
     type Marker =
       | { type: "district"; num: number; el: Element }
       | { type: "station"; num: number; el: Element }
@@ -142,30 +140,40 @@ async function parseRosterPage(
         markers.push({ type: "district", num: parseInt(distMatch[1]), el: span });
       } else if (stnMatch) {
         markers.push({ type: "station", num: parseInt(stnMatch[1]), el: span });
-      } else if (text && !text.includes("Fire Rescue") && !text.includes("Monday") && !text.includes("Tuesday") && !text.includes("Wednesday") && !text.includes("Thursday") && !text.includes("Friday") && !text.includes("Saturday") && !text.includes("Sunday")) {
-        // It's a truck/unit name like "Pump 10 {Cell 780-860-6851}"
-        const phoneMatch = text.match(/\{(?:Cell\s*)?([^}]+)\}/);
-        const phone = phoneMatch ? phoneMatch[1].trim() : "";
+      } else if (text && !text.match(/Fire Rescue|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday/i)) {
+        // Truck/unit name like "Pump 10 {Cell:(780) 860-6851}"
         const truckName = text.split("{")[0].trim();
-        markers.push({ type: "truck", name: truckName, phone, el: span });
+        if (truckName) {
+          markers.push({ type: "truck", name: truckName, phone: "", el: span });
+        }
       }
     });
 
-    allCrew.forEach((el) => {
-      const title = el.getAttribute("data-popup-title") || "";
-      const jobTitle = el.getAttribute("data-popup-jobtitle") || "";
+    // Crew members from div.displayNameText
+    allCrewNames.forEach((el) => {
+      const fullText = el.textContent?.trim() || "";
+      // Format: "Alexander, Kyle    SQ30 T. (2 St Pump/EMR/Hz3/Pump)"
+      // Extract "LastName, FirstName"
+      const nameMatch = fullText.match(/^([A-Za-z'-]+,\s*[A-Za-z'-]+)/);
+      const name = nameMatch ? nameMatch[1] : fullText.split("(")[0].trim();
 
-      // Parse name from data-popup-title: "LastName, FirstName PositionCode MiddleInit. (quals)"
-      const nameMatch = title.match(/^([^(]+)/);
-      let name = nameMatch ? nameMatch[1].trim() : title;
-      // Extract just "LastName, FirstName"
-      const cleanName = name.match(/^([A-Za-z'-]+,\s*[A-Za-z'-]+)/);
-      if (cleanName) name = cleanName[1];
-
-      const qualMatch = title.match(/\(([^)]+)\)/);
+      const qualMatch = fullText.match(/\(([^)]+)\)/);
       const quals = qualMatch ? qualMatch[1] : "";
 
-      markers.push({ type: "crew", name, rank: jobTitle, quals, el });
+      // Find the rank from a nearby span.positionNameText
+      // Walk up to find the crew row container, then find positionNameText within it
+      let rank = "";
+      let parent = el.parentElement;
+      for (let i = 0; i < 5 && parent; i++) {
+        const rankEl = parent.querySelector("span.positionNameText");
+        if (rankEl) {
+          rank = rankEl.textContent?.trim() || "";
+          break;
+        }
+        parent = parent.parentElement;
+      }
+
+      markers.push({ type: "crew", name, rank, quals, el });
     });
 
     // Sort markers by DOM order
