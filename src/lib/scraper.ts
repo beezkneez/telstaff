@@ -322,38 +322,49 @@ export async function scrapeRoster(
     // Login
     await login(page, username, password);
 
-    // Navigate to roster page (without rosterViewId — need to select from dropdown)
-    const d = formatDate(date);
-    const rosterBaseUrl = `${TELESTAFF_BASE_URL}/telestaff/roster/d%5B${d}%5D?dynamicDateOffSet=0&collapsedStateChanges=&refresh=true`;
-    console.log("[scraper] Navigating to roster page...");
-    await page.goto(rosterBaseUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-    console.log("[scraper] Roster page loaded, selecting platoon...");
+    // Navigate directly to roster with platoon rosterViewId in URL
+    const rosterUrl = getRosterUrl(platoon, date);
+    console.log("[scraper] Navigating to roster:", rosterUrl);
+    await page.goto(rosterUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+    console.log("[scraper] Roster page loaded, waiting for data...");
 
-    // Select the platoon from the dropdown
-    const viewId = PLATOON_ROSTER_VIEW_IDS[platoon];
-    // The dropdown is a select element — find it and select the right option
-    // Try selecting by the rosterViewId value in the dropdown
-    const dropdown = page.locator('select, .dropdown, [id*="roster"], [id*="view"]').first();
-    await dropdown.waitFor({ state: "attached", timeout: 10000 });
+    // Wait for actual content to appear in the table (not just the empty table shell)
+    // Poll until the table has child elements or timeout after 20s
+    await page.waitForFunction(
+      () => {
+        const table = document.getElementById("tableGrid");
+        return table && table.innerHTML.trim().length > 100;
+      },
+      { timeout: 20000 }
+    ).catch(() => {
+      console.log("[scraper] Table still empty after 20s, trying page reload with roster view...");
+    });
 
-    // Try to select by value matching the viewId, or click the dropdown and find the platoon option
-    try {
-      await dropdown.selectOption({ value: viewId });
-      console.log("[scraper] Selected platoon via dropdown value:", viewId);
-    } catch {
-      // If that doesn't work, try clicking the dropdown and selecting by text
-      console.log("[scraper] selectOption failed, trying click approach...");
-      await dropdown.click();
-      await page.waitForTimeout(500);
-      // Look for option containing the platoon number
-      const option = page.getByText(`${platoon} Platoon`, { exact: false }).first();
-      await option.click();
-      console.log("[scraper] Selected platoon via text click");
+    // Check if table has content now
+    const tableLength = await page.evaluate(() => {
+      const table = document.getElementById("tableGrid");
+      return table ? table.innerHTML.trim().length : 0;
+    });
+    console.log("[scraper] Table content length:", tableLength);
+
+    // If still empty, try clicking the dropdown to trigger load
+    if (tableLength < 100) {
+      console.log("[scraper] Table empty, trying dropdown click...");
+      // Look for the roster dropdown trigger button/arrow
+      const dropdownTrigger = page.locator('[class*="dropdown"], [class*="combobox"], [role="combobox"], [class*="roster"] select, .rosterViewSelector, [id*="rosterView"]').first();
+      try {
+        await dropdownTrigger.click({ timeout: 5000 });
+        await page.waitForTimeout(500);
+        // Click the platoon option
+        await page.getByText(`${platoon} Platoon`, { exact: false }).first().click({ timeout: 5000 });
+        await page.waitForTimeout(5000);
+        console.log("[scraper] Dropdown selection done");
+      } catch (e) {
+        console.log("[scraper] Dropdown fallback failed:", (e as Error).message?.substring(0, 100));
+      }
     }
 
-    // Wait for the roster to load after platoon selection
-    await page.waitForTimeout(5000);
-    console.log("[scraper] Platoon selected, URL:", page.url());
+    console.log("[scraper] Final URL:", page.url());
 
     // Parse the roster
     const stations = await parseRosterPage(page, platoon, date || formatDate());
