@@ -193,23 +193,31 @@ export function initCron(): void {
   if (initialized) return;
   initialized = true;
 
+  // 6:30 AM MT = 12:30 UTC (pre-shift)
+  cron.schedule("30 12 * * *", () => {
+    console.log("[cron] Running 6:30 AM scrape...");
+    runNightlyScrape().catch((err) => console.error("[cron] 6:30 AM error:", err));
+  });
+
   // 7:00 AM MT = 13:00 UTC (shift start)
   cron.schedule("0 13 * * *", () => {
     console.log("[cron] Running 7 AM scrape...");
-    runNightlyScrape().catch((err) =>
-      console.error("[cron] 7 AM scrape error:", err)
-    );
+    runNightlyScrape().catch((err) => console.error("[cron] 7 AM error:", err));
   });
 
-  // 5:00 PM MT = 23:00 UTC (evening refresh)
+  // 4:30 PM MT = 22:30 UTC (pre-shift)
+  cron.schedule("30 22 * * *", () => {
+    console.log("[cron] Running 4:30 PM scrape...");
+    runNightlyScrape().catch((err) => console.error("[cron] 4:30 PM error:", err));
+  });
+
+  // 5:00 PM MT = 23:00 UTC (shift start)
   cron.schedule("0 23 * * *", () => {
     console.log("[cron] Running 5 PM scrape...");
-    runNightlyScrape().catch((err) =>
-      console.error("[cron] 5 PM scrape error:", err)
-    );
+    runNightlyScrape().catch((err) => console.error("[cron] 5 PM error:", err));
   });
 
-  console.log("[cron] Scheduled: 7:00 AM & 5:00 PM MT daily");
+  console.log("[cron] Scheduled: 6:30 AM, 7:00 AM, 4:30 PM, 5:00 PM MT daily");
 
   // Run immediately on startup if no recent data
   setTimeout(() => {
