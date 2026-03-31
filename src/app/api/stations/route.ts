@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { getCached, setCached, getInProgress, setInProgress } from "@/lib/cache";
+import type { StationStaffing } from "@/lib/types";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -16,11 +17,28 @@ export async function GET(req: Request) {
   const platoon = searchParams.get("platoon") || "1";
   const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
 
-  // Check cache first — return immediately if fresh
-  const cached = getCached(platoon, date);
-  if (cached) {
-    console.log("[stations] Cache hit for platoon", platoon, "date", date);
-    return NextResponse.json(cached);
+  // Check in-memory cache first
+  const memCached = getCached(platoon, date);
+  if (memCached) {
+    console.log("[stations] Memory cache hit for platoon", platoon);
+    return NextResponse.json(memCached);
+  }
+
+  // Check database cache (from nightly cron)
+  try {
+    const dateObj = new Date(date + "T00:00:00Z");
+    const dbCached = await prisma.staffingCache.findMany({
+      where: { date: dateObj, platoon },
+      orderBy: { station: "asc" },
+    });
+    if (dbCached.length > 0) {
+      const stations = dbCached.map((c) => c.data as unknown as StationStaffing);
+      setCached(platoon, date, stations);
+      console.log("[stations] DB cache hit:", dbCached.length, "stations");
+      return NextResponse.json(stations);
+    }
+  } catch (err) {
+    console.error("[stations] DB cache read error:", err);
   }
 
   // Get user credentials

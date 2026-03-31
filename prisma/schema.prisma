@@ -39,3 +39,15 @@ model StaffingCache {
   @@unique([date, platoon, station])
   @@index([date, platoon])
 }
+
+model OTWPCache {
+  id                String   @id @default(cuid())
+  date              DateTime @db.Date
+  platoon           String   // the on-shift platoon being checked
+  shift             String   // "day" or "night"
+  count             Int
+  scrapedAt         DateTime @default(now())
+
+  @@unique([date, platoon, shift])
+  @@index([date])
+}
