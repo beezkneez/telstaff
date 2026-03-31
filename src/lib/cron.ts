@@ -152,29 +152,36 @@ async function runNightlyScrape(): Promise<void> {
     return;
   }
 
-  const today = new Date().toISOString().split("T")[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  const now = new Date();
 
-  // Scrape all 4 platoons for today and tomorrow
-  for (const platoon of ["1", "2", "3", "4"]) {
-    await scrapeAndCacheRoster(creds.username, creds.password, platoon, today);
-    await scrapeAndCacheRoster(
-      creds.username,
-      creds.password,
-      platoon,
-      tomorrow
-    );
+  // Build list of dates: 6 days back through 6 days ahead (13 days total)
+  const dates: string[] = [];
+  for (let i = -6; i <= 6; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    dates.push(d.toISOString().split("T")[0]);
   }
 
-  // Scrape OTWP for today
-  await scrapeAndCacheOTWP(creds.username, creds.password, today, "", "day");
+  console.log(`[cron] Scraping ${dates.length} dates × 4 platoons...`);
+
+  // Scrape all 4 platoons for each date
+  for (const date of dates) {
+    for (const platoon of ["1", "2", "3", "4"]) {
+      await scrapeAndCacheRoster(creds.username, creds.password, platoon, date);
+    }
+  }
 
   // Scrape OTWP for each platoon's last 6-off eligible days
+  const otwpDatesScraped = new Set<string>();
   for (const platoon of ["1", "2", "3", "4"]) {
+    const today = now.toISOString().split("T")[0];
     const last6Off = getLast6Off(today, platoon);
     const eligibleDates = last6Off.dates.filter((_, i) => last6Off.eligible[i]);
 
     for (const d of eligibleDates) {
+      const key = d;
+      if (otwpDatesScraped.has(key)) continue;
+      otwpDatesScraped.add(key);
       await scrapeAndCacheOTWP(creds.username, creds.password, d, "", "both");
     }
   }
@@ -186,23 +193,17 @@ export function initCron(): void {
   if (initialized) return;
   initialized = true;
 
-  // Run at 5:00 AM Mountain Time every day
-  // Railway runs in UTC, so 5 AM MT = 11:00 or 12:00 UTC depending on DST
-  // Use 11:00 UTC (5 AM MDT) for now
-  cron.schedule("0 11 * * *", () => {
+  // Run at 11:00 PM Mountain Time daily
+  // MDT = UTC-6, so 11 PM MDT = 5:00 AM UTC next day
+  // MST = UTC-7, so 11 PM MST = 6:00 AM UTC next day
+  // Use 5:00 AM UTC (11 PM MDT)
+  cron.schedule("0 5 * * *", () => {
     runNightlyScrape().catch((err) =>
       console.error("[cron] Nightly scrape error:", err)
     );
   });
 
-  // Also run at 5 PM for evening data refresh
-  cron.schedule("0 23 * * *", () => {
-    runNightlyScrape().catch((err) =>
-      console.error("[cron] Evening scrape error:", err)
-    );
-  });
-
-  console.log("[cron] Scheduled: 5:00 AM & 5:00 PM MT daily");
+  console.log("[cron] Scheduled: 11:00 PM MT daily");
 
   // Run immediately on startup if no recent data
   setTimeout(() => {

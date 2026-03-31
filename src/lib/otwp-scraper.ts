@@ -45,7 +45,7 @@ async function scrapeOTWPForPlatoonDate(
   isFirstLoad: boolean
 ): Promise<number> {
   const viewId = PLATOON_ROSTER_VIEW_IDS[platoon];
-  console.log("[otwp] Scraping PLT-${platoon} on ${date}...");
+  console.log(`[otwp] Scraping PLT-${platoon} on ${date}...`);
 
   if (isFirstLoad) {
     // Navigate to roster page first time
