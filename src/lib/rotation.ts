@@ -106,3 +106,52 @@ export function canBeCalledIn(date: Date | string, platoon: string): boolean {
   // Middle 4 (11, 12, 13, 14) = can be called
   return cycleDay >= 11 && cycleDay <= 14;
 }
+
+// Find the most recent (or current) 6-day long off period for a platoon
+export function getLast6Off(
+  fromDate: Date | string,
+  platoon: string
+): { dates: string[]; eligible: boolean[] } {
+  const d = typeof fromDate === "string" ? new Date(fromDate + "T12:00:00") : new Date(fromDate);
+
+  // Look back up to 20 days to find the start of the last 6-off (cycle day 10)
+  for (let i = 0; i <= 20; i++) {
+    const check = new Date(d);
+    check.setDate(check.getDate() - i);
+    const cycleDay = getCycleDay(check, platoon);
+
+    if (cycleDay === 10) {
+      // Found the start of a 6-off period
+      const dates: string[] = [];
+      const eligible: boolean[] = [];
+      for (let j = 0; j < 6; j++) {
+        const offDay = new Date(check);
+        offDay.setDate(offDay.getDate() + j);
+        dates.push(offDay.toISOString().split("T")[0]);
+        const cd = getCycleDay(offDay, platoon);
+        eligible.push(cd >= 11 && cd <= 14);
+      }
+      return { dates, eligible };
+    }
+
+    // Also check if we're currently IN a 6-off (cycle days 10-15)
+    if (cycleDay >= 10 && cycleDay <= 15 && i === 0) {
+      // We're in a 6-off now — find its start
+      const start = new Date(d);
+      start.setDate(start.getDate() - (cycleDay - 10));
+      const dates: string[] = [];
+      const eligible: boolean[] = [];
+      for (let j = 0; j < 6; j++) {
+        const offDay = new Date(start);
+        offDay.setDate(offDay.getDate() + j);
+        dates.push(offDay.toISOString().split("T")[0]);
+        const cd = getCycleDay(offDay, platoon);
+        eligible.push(cd >= 11 && cd <= 14);
+      }
+      return { dates, eligible };
+    }
+  }
+
+  // Fallback — shouldn't happen
+  return { dates: [], eligible: [] };
+}

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn } from "@/lib/rotation";
+import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off } from "@/lib/rotation";
 import { getCallInLists, findMemberPosition, getPositionsAhead } from "@/lib/callin-list";
 
 export async function GET(req: Request) {
@@ -84,6 +84,18 @@ export async function GET(req: Request) {
     console.error("[overtime] Failed to fetch call-in list:", error);
   }
 
+  // Get the last 6-off period with shift info for each day
+  const last6Off = getLast6Off(date, userPlatoon);
+  const sixOffDetails = last6Off.dates.map((d, i) => {
+    const shifts = getOnShiftPlatoons(d);
+    return {
+      date: d,
+      eligible: last6Off.eligible[i],
+      dayShiftPlatoon: shifts.dayShift,
+      nightShiftPlatoon: shifts.nightShift,
+    };
+  });
+
   return NextResponse.json({
     date,
     userPlatoon,
@@ -93,5 +105,6 @@ export async function GET(req: Request) {
     onShift,
     allPlatoons,
     callInData,
+    sixOffDetails,
   });
 }

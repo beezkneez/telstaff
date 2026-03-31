@@ -21,6 +21,12 @@ interface OvertimeData {
     positionsAhead: number | null;
     nearbyMembers: { position: number; name: string }[];
   } | null;
+  sixOffDetails: {
+    date: string;
+    eligible: boolean;
+    dayShiftPlatoon: string | null;
+    nightShiftPlatoon: string | null;
+  }[];
 }
 
 const PLATOON_COLORS: Record<string, string> = {
@@ -321,6 +327,97 @@ export default function OvertimePage() {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Last 6-Off Period */}
+          {data.sixOffDetails && data.sixOffDetails.length > 0 && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-400">
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">
+                Last 6-Off — OT Shifts
+              </h2>
+              <div className="space-y-1">
+                {data.sixOffDetails.map((day, i) => {
+                  const dateObj = new Date(day.date + "T12:00:00");
+                  const dayLabel = dateObj.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  });
+                  const isToday = day.date === selectedDate;
+
+                  return (
+                    <div
+                      key={day.date}
+                      className={`flex items-center justify-between px-3 py-2.5 ${
+                        isToday
+                          ? "bg-ember/10 border-l-2 border-l-ember"
+                          : day.eligible
+                            ? "bg-surface-raised/50"
+                            : "opacity-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] text-muted w-4">
+                          {i + 1}
+                        </span>
+                        <span className={`font-mono text-xs ${isToday ? "text-ember font-bold" : "text-foreground"}`}>
+                          {dayLabel}
+                        </span>
+                        {!day.eligible && (
+                          <span className="font-mono text-[9px] text-muted tracking-wider">
+                            NOT ELIGIBLE
+                          </span>
+                        )}
+                        {isToday && (
+                          <span className="font-mono text-[9px] text-ember tracking-wider uppercase">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      {day.eligible && (
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[9px] text-amber tracking-wider">DAY</span>
+                            <span
+                              className="font-mono text-[10px] px-1.5 py-0.5"
+                              style={{
+                                backgroundColor: day.dayShiftPlatoon
+                                  ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)`
+                                  : undefined,
+                                color: day.dayShiftPlatoon
+                                  ? `var(--platoon-${day.dayShiftPlatoon})`
+                                  : undefined,
+                              }}
+                            >
+                              PLT-{day.dayShiftPlatoon}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[9px] text-platoon-3 tracking-wider">NIGHT</span>
+                            <span
+                              className="font-mono text-[10px] px-1.5 py-0.5"
+                              style={{
+                                backgroundColor: day.nightShiftPlatoon
+                                  ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)`
+                                  : undefined,
+                                color: day.nightShiftPlatoon
+                                  ? `var(--platoon-${day.nightShiftPlatoon})`
+                                  : undefined,
+                              }}
+                            >
+                              PLT-{day.nightShiftPlatoon}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="font-mono text-[9px] text-muted tracking-wider mt-3">
+                Days 1 and 6 are not eligible for OT call-in. Middle 4 days are eligible.
+              </p>
             </div>
           )}
 
