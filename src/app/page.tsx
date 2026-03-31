@@ -18,10 +18,10 @@ export default function Home() {
           </div>
           <div>
             <span className="font-display text-xl font-semibold tracking-[0.2em] text-foreground">
-              TELESTAFF
+              BETTER
             </span>
             <span className="font-display text-xl font-semibold tracking-[0.2em] text-ember">
-              //REVAMPED
+              //STAFF
             </span>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="relative z-10 py-4 text-center font-mono text-[10px] text-muted/50 tracking-[0.2em] uppercase border-t border-border-subtle">
-        Telestaff Revamped // Not affiliated with UKG/Kronos
+        BetterStaff // Not affiliated with UKG/Kronos
       </footer>
     </div>
   );

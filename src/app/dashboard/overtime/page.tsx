@@ -41,6 +41,7 @@ interface OvertimeData {
     statHolidayName: string | null;
     dayOfWeek: string;
   } | null;
+  ytdTally: { platoon: string; total: number }[];
 }
 
 interface OTWPResult {
@@ -278,6 +279,39 @@ export default function OvertimePage() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* YTD Tally */}
+          {data.ytdTally && data.ytdTally.some((t) => t.total > 0) && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-150">
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">
+                YTD Call-In Tally — {new Date().getFullYear()}
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {data.ytdTally.map((t) => (
+                  <div key={t.platoon} className="p-3 border border-border-subtle">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="w-2.5 h-2.5"
+                        style={{ backgroundColor: `var(--platoon-${t.platoon})` }}
+                      />
+                      <span className="font-mono text-[10px] tracking-wider uppercase">
+                        PLT-{t.platoon}
+                      </span>
+                    </div>
+                    <p
+                      className="font-display text-2xl font-bold"
+                      style={{ color: `var(--platoon-${t.platoon})` }}
+                    >
+                      {t.total}
+                    </p>
+                    <p className="font-mono text-[9px] text-muted mt-1">
+                      total OT call-ins
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           )}

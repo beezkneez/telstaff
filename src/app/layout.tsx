@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
+import InstallBanner from "@/components/InstallBanner";
 
 export const metadata: Metadata = {
-  title: "Telestaff Revamped — Edmonton Fire Rescue",
+  title: "BetterStaff — Edmonton Fire Rescue",
   description:
     "Real-time staffing dashboard for Edmonton Fire Rescue firefighters",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TSR",
+    title: "BetterStaff",
   },
 };
 
@@ -33,7 +34,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
       <body className="noise-bg min-h-full flex flex-col bg-background text-foreground font-body">
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          {children}
+          <InstallBanner />
+        </SessionProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');`,

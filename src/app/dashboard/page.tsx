@@ -359,8 +359,8 @@ export default function DashboardPage() {
               color: "text-foreground",
             },
             {
-              value: offRoster > 0 ? `${activeCrew}/${totalCrew}` : totalCrew,
-              label: "Personnel" + (offRoster > 0 ? ` (${offRoster} off roster)` : ""),
+              value: `${activeCrew}/${totalCrew}`,
+              label: offRoster > 0 ? `On Roster / Total (${offRoster} off)` : "Total Personnel",
               color: "text-foreground",
             },
             {

@@ -123,6 +123,25 @@ export async function GET(req: Request) {
     );
   }
 
+  // YTD OTWP tally per platoon
+  const yearStart = new Date(`${new Date().getFullYear()}-01-01T00:00:00Z`);
+  let ytdTally: { platoon: string; total: number }[] = [];
+  try {
+    const ytdData = await prisma.oTWPCache.findMany({
+      where: { date: { gte: yearStart } },
+    });
+    const tallyMap: Record<string, number> = {};
+    for (const entry of ytdData) {
+      tallyMap[entry.platoon] = (tallyMap[entry.platoon] || 0) + entry.count;
+    }
+    ytdTally = ["1", "2", "3", "4"].map((p) => ({
+      platoon: p,
+      total: tallyMap[p] || 0,
+    }));
+  } catch (err) {
+    console.error("[overtime] YTD tally error:", err);
+  }
+
   return NextResponse.json({
     date,
     userPlatoon,
@@ -134,5 +153,6 @@ export async function GET(req: Request) {
     callInData,
     sixOffDetails,
     prediction,
+    ytdTally,
   });
 }
