@@ -21,21 +21,27 @@ async function login(
   username: string,
   password: string
 ): Promise<void> {
+  console.log("[scraper] Navigating to login page...");
   await page.goto(`${TELESTAFF_BASE_URL}/telestaff/login`, {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
   });
+  console.log("[scraper] Login page loaded, URL:", page.url());
 
   await page.fill("#username", username);
   await page.fill("#password", password);
+  console.log("[scraper] Credentials filled, clicking Sign In...");
 
   // Submit the login form — click "Sign In" button by text
   await page.getByRole("button", { name: "Sign In" }).click();
+  console.log("[scraper] Clicked Sign In, waiting for redirect...");
 
   // Wait for the login page to go away (URL changes from /login)
   await page.waitForFunction(
     () => !window.location.href.includes("/login"),
     { timeout: 30000 }
   );
+  console.log("[scraper] Login complete, URL:", page.url());
 }
 
 function formatDate(date?: string): string {
@@ -309,10 +315,13 @@ export async function scrapeRoster(
 
     // Navigate to roster page
     const rosterUrl = getRosterUrl(platoon, date);
-    await page.goto(rosterUrl, { waitUntil: "networkidle" });
+    console.log("[scraper] Navigating to roster:", rosterUrl);
+    await page.goto(rosterUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+    console.log("[scraper] Roster page loaded, URL:", page.url());
 
     // Parse the roster
     const stations = await parseRosterPage(page, platoon, date || formatDate());
+    console.log("[scraper] Parsed", stations.length, "stations");
 
     return stations;
   } finally {
