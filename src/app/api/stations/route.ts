@@ -31,16 +31,20 @@ export async function GET(req: Request) {
       select: { telestaff_username: true, telestaff_password: true },
     });
 
+    console.log("[stations] userId:", userId, "hasTelestaff:", !!(user?.telestaff_username));
+
     if (user?.telestaff_username && user?.telestaff_password) {
       username = decrypt(user.telestaff_username);
       password = decrypt(user.telestaff_password);
       hasCreds = true;
+      console.log("[stations] Credentials decrypted OK, username:", username);
     }
   } catch (error) {
-    console.error("Error loading credentials:", error);
+    console.error("[stations] Error loading/decrypting credentials:", error);
   }
 
   // Try real scraper if creds available
+  console.log("[stations] hasCreds:", hasCreds, "platoon:", platoon);
   if (hasCreds) {
     try {
       const { scrapeRoster, scrapeStationFromRoster } = await import(
