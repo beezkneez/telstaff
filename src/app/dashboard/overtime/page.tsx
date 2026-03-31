@@ -27,6 +27,14 @@ interface OvertimeData {
     dayShiftPlatoon: string | null;
     nightShiftPlatoon: string | null;
   }[];
+  next6OffDetails: {
+    date: string;
+    eligible: boolean;
+    dayShiftPlatoon: string | null;
+    nightShiftPlatoon: string | null;
+    statHoliday: string | null;
+    statDaysAway: number;
+  }[];
   prediction: {
     positionsAhead: number;
     last6OffTotal: number;
@@ -323,6 +331,82 @@ export default function OvertimePage() {
               <p className="font-mono text-[10px] text-muted tracking-wider mt-3">
                 Holes = required crew per truck minus actual assigned. These are the OT spots that need filling.
               </p>
+            </div>
+          )}
+
+          {/* Next 6-Off Preview */}
+          {data.next6OffDetails && data.next6OffDetails.length > 0 && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-150">
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">
+                Next 6-Off — Preview
+              </h2>
+              <div className="space-y-1">
+                {data.next6OffDetails.map((day, i) => {
+                  const dateObj = new Date(day.date + "T12:00:00");
+                  const dayLabel = dateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                  const hasShortfall = data.shortfalls?.some((sf) => sf.date === day.date);
+
+                  return (
+                    <div
+                      key={day.date}
+                      className={`flex items-center justify-between px-3 py-2.5 ${
+                        day.eligible ? "bg-surface-raised/50" : "opacity-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] text-muted w-4">{i + 1}</span>
+                        <span className="font-mono text-sm text-foreground">{dayLabel}</span>
+                        {!day.eligible && (
+                          <span className="font-mono text-[10px] text-muted tracking-wider">NOT ELIGIBLE</span>
+                        )}
+                        {day.statHoliday && (
+                          <span className="font-mono text-[10px] tracking-wider px-1.5 py-0.5 bg-amber/10 text-amber border border-amber/20">
+                            {day.statHoliday}{day.statDaysAway === 0 ? "" : ` (${day.statDaysAway}d away)`}
+                          </span>
+                        )}
+                      </div>
+                      {day.eligible && (
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[10px] text-amber tracking-wider">DAY</span>
+                            <span
+                              className="font-mono text-[10px] px-1.5 py-0.5"
+                              style={{
+                                backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined,
+                                color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined,
+                              }}
+                            >
+                              PLT-{day.dayShiftPlatoon}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[10px] text-platoon-3 tracking-wider">NIGHT</span>
+                            <span
+                              className="font-mono text-[10px] px-1.5 py-0.5"
+                              style={{
+                                backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined,
+                                color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined,
+                              }}
+                            >
+                              PLT-{day.nightShiftPlatoon}
+                            </span>
+                          </div>
+                          {hasShortfall && (
+                            <span className="font-mono text-[10px] text-ember">HOLES</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {data.next6OffDetails.some((d) => d.statHoliday) && (
+                <div className="mt-3 p-3 bg-amber/5 border border-amber/20">
+                  <p className="font-mono text-xs text-amber">
+                    Stat holiday during your next 6-off — expect significantly reduced overtime demand. Fewer people book off around stats, so fewer call-ins needed.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

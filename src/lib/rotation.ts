@@ -155,3 +155,36 @@ export function getLast6Off(
   // Fallback — shouldn't happen
   return { dates: [], eligible: [] };
 }
+
+// Find the NEXT upcoming 6-day long off period for a platoon
+export function getNext6Off(
+  fromDate: Date | string,
+  platoon: string
+): { dates: string[]; eligible: boolean[] } {
+  const d = typeof fromDate === "string" ? new Date(fromDate + "T12:00:00") : new Date(fromDate);
+
+  // Look ahead up to 20 days to find the start of the next 6-off (cycle day 10)
+  for (let i = 0; i <= 20; i++) {
+    const check = new Date(d);
+    check.setDate(check.getDate() + i);
+    const cycleDay = getCycleDay(check, platoon);
+
+    // If we're currently IN a 6-off and i=0, skip to find the NEXT one
+    if (i === 0 && cycleDay >= 10 && cycleDay <= 15) continue;
+
+    if (cycleDay === 10) {
+      const dates: string[] = [];
+      const eligible: boolean[] = [];
+      for (let j = 0; j < 6; j++) {
+        const offDay = new Date(check);
+        offDay.setDate(offDay.getDate() + j);
+        dates.push(offDay.toISOString().split("T")[0]);
+        const cd = getCycleDay(offDay, platoon);
+        eligible.push(cd >= 11 && cd <= 14);
+      }
+      return { dates, eligible };
+    }
+  }
+
+  return { dates: [], eligible: [] };
+}

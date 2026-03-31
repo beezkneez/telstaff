@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off } from "@/lib/rotation";
+import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off, getNext6Off } from "@/lib/rotation";
 import { getCallInLists, findMemberPosition, getPositionsAhead } from "@/lib/callin-list";
-import { predictOvertime } from "@/lib/prediction";
+import { predictOvertime, isNearStatHoliday } from "@/lib/prediction";
 import { calculateShortfall, type StaffingShortfall } from "@/lib/staffing-calc";
 
 export async function GET(req: Request) {
@@ -211,10 +211,26 @@ export async function GET(req: Request) {
     console.error("[overtime] YTD tally error:", err);
   }
 
-  // Calculate staffing shortfalls for eligible days
+  // Get next 6-off details
+  const next6Off = getNext6Off(date, userPlatoon);
+  const next6OffDetails = next6Off.dates.map((d, i) => {
+    const shifts = getOnShiftPlatoons(d);
+    const stat = isNearStatHoliday(d);
+    return {
+      date: d,
+      eligible: next6Off.eligible[i],
+      dayShiftPlatoon: shifts.dayShift,
+      nightShiftPlatoon: shifts.nightShift,
+      statHoliday: stat.near ? stat.holiday : null,
+      statDaysAway: stat.daysAway,
+    };
+  });
+
+  // Calculate staffing shortfalls for NEXT 6-off eligible days
   const shortfalls: StaffingShortfall[] = [];
+  const allEligibleDetails = [...sixOffDetails, ...next6OffDetails];
   try {
-    for (const detail of sixOffDetails) {
+    for (const detail of allEligibleDetails) {
       if (!detail.eligible) continue;
       const dateObj = new Date(detail.date + "T00:00:00Z");
 
@@ -251,6 +267,7 @@ export async function GET(req: Request) {
     allPlatoons,
     callInData,
     sixOffDetails,
+    next6OffDetails,
     prediction,
     shortfalls,
     ytdNeeded,
