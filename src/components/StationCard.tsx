@@ -22,6 +22,7 @@ const TRUCK_COLORS: Record<string, { accent: string; bg: string }> = {
   Medic: { accent: "text-blue-400", bg: "bg-blue-500/5 border-blue-500/10" },
   Hazmat: { accent: "text-yellow-400", bg: "bg-yellow-500/5 border-yellow-500/10" },
   Command: { accent: "text-purple-400", bg: "bg-purple-500/5 border-purple-500/10" },
+  OffRoster: { accent: "text-muted", bg: "bg-surface-overlay/30 border-border-subtle" },
   Other: { accent: "text-muted", bg: "bg-surface-overlay/50 border-border" },
 };
 
@@ -36,14 +37,18 @@ export default function StationCard({
   trucks,
   animationDelay = 0,
 }: StationCardProps) {
-  const totalCrew = trucks.reduce((sum, t) => sum + t.crew.length, 0);
+  const activeTrucks = trucks.filter((t) => t.type !== "OffRoster");
+  const offRosterTrucks = trucks.filter((t) => t.type === "OffRoster");
+  const activeCrew = activeTrucks.reduce((sum, t) => sum + t.crew.length, 0);
+  const offRosterCrew = offRosterTrucks.reduce((sum, t) => sum + t.crew.length, 0);
+  const totalCrew = activeCrew + offRosterCrew;
 
   return (
     <div
       className="animate-fade-slide-up bg-surface border border-border overflow-hidden card-hover"
       style={{ animationDelay: `${animationDelay}ms` }}
     >
-      {/* Station Header — tactical style */}
+      {/* Station Header */}
       <div className="px-4 py-3 border-b border-border bg-surface-raised/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -55,7 +60,7 @@ export default function StationCard({
                 STN-{String(station).padStart(2, "0")}
               </h3>
               <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
-                {trucks.length} {trucks.length === 1 ? "unit" : "units"} // {totalCrew} personnel
+                {activeTrucks.length} {activeTrucks.length === 1 ? "unit" : "units"} // {activeCrew}{offRosterCrew > 0 ? `/${totalCrew}` : ""} personnel
               </p>
             </div>
           </div>
@@ -68,9 +73,9 @@ export default function StationCard({
         </div>
       </div>
 
-      {/* Trucks */}
+      {/* Active Trucks */}
       <div className="divide-y divide-border">
-        {trucks.map((truck) => {
+        {activeTrucks.map((truck) => {
           const colors = TRUCK_COLORS[truck.type] || TRUCK_COLORS["Other"];
           return (
             <div key={truck.truck} className="px-4 py-3">
@@ -134,6 +139,41 @@ export default function StationCard({
           );
         })}
       </div>
+
+      {/* Off Roster */}
+      {offRosterTrucks.length > 0 && (
+        <div className="border-t border-border">
+          <div className="px-4 py-2 bg-surface-overlay/20 border-b border-border-subtle">
+            <span className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase">
+              Off Roster — {offRosterCrew} personnel
+            </span>
+          </div>
+          <div className="px-4 py-3 opacity-60">
+            <div className="space-y-px">
+              {offRosterTrucks.flatMap((truck) =>
+                truck.crew.map((member, idx) => (
+                  <div
+                    key={`${truck.truck}-${idx}`}
+                    className="flex items-center justify-between py-1.5 px-2"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-5 h-5 flex items-center justify-center font-mono text-[9px] font-bold bg-surface-overlay border border-border text-muted">
+                        {member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                      </div>
+                      <span className="font-mono text-xs truncate text-muted">
+                        {member.name}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[9px] tracking-wider uppercase text-muted">
+                      {member.rank?.replace(" Hz3", "").replace(" Pump,Hz3", "")}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

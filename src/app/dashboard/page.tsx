@@ -310,28 +310,31 @@ export default function DashboardPage() {
       {/* Stats bar */}
       {!loading && viewMode === "all-stations" && allStations.length > 0 && (
         <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-px animate-fade-slide-up delay-300">
-          {[
+          {(() => {
+            const activeUnits = allStations.reduce(
+              (sum, s) => sum + s.trucks.filter((t) => t.type !== "OffRoster").length, 0
+            );
+            const activeCrew = allStations.reduce(
+              (sum, s) => sum + s.trucks.filter((t) => t.type !== "OffRoster").reduce((t, u) => t + u.crew.length, 0), 0
+            );
+            const totalCrew = allStations.reduce(
+              (sum, s) => sum + s.trucks.reduce((t, u) => t + u.crew.length, 0), 0
+            );
+            const offRoster = totalCrew - activeCrew;
+            return [
             {
               value: allStations.length,
               label: "Stations Active",
               color: "text-ember",
             },
             {
-              value: allStations.reduce(
-                (sum, s) => sum + s.trucks.length,
-                0
-              ),
+              value: activeUnits,
               label: "Units in Service",
               color: "text-foreground",
             },
             {
-              value: allStations.reduce(
-                (sum, s) =>
-                  sum +
-                  s.trucks.reduce((t, u) => t + u.crew.length, 0),
-                0
-              ),
-              label: "Total Personnel",
+              value: offRoster > 0 ? `${activeCrew}/${totalCrew}` : totalCrew,
+              label: "Personnel" + (offRoster > 0 ? ` (${offRoster} off roster)` : ""),
               color: "text-foreground",
             },
             {
@@ -345,7 +348,7 @@ export default function DashboardPage() {
                 : "Viewing",
               color: "text-success",
             },
-          ].map((stat) => (
+          ]; })().map((stat) => (
             <div
               key={stat.label}
               className="bg-surface border border-border p-4"
