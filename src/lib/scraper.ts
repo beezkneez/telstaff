@@ -108,20 +108,22 @@ async function parseRosterPage(
   });
   console.log("[scraper] tableGrid sample HTML:", debugHtml.substring(0, 2000));
 
-  // Expand all collapsed stations by clicking all + buttons
-  const expandButtons = await page.$$('.treeNodeExpand, .expand-icon, [class*="expand"], [class*="collapsed"] > .toggle, img[src*="plus"], .tree-toggle');
+  // Expand all collapsed stations by clicking the expand/collapse links
+  const expandButtons = await page.$$('a.plainTextLink[aria-label="Expand/collapse"][aria-expanded="false"]');
+  console.log("[scraper] Found", expandButtons.length, "expand buttons to click");
 
   for (const btn of expandButtons) {
     try {
       await btn.click();
-      await page.waitForTimeout(200);
+      await page.waitForTimeout(300);
     } catch {
       // Some buttons may not be clickable, skip
     }
   }
 
   // Give time for all expansions to complete
-  await page.waitForTimeout(1000);
+  console.log("[scraper] Waiting for expansions to settle...");
+  await page.waitForTimeout(3000);
 
   // Parse the page content
   const stations = await page.evaluate((platoonId: string) => {
@@ -322,48 +324,77 @@ export async function scrapeRoster(
     // Login
     await login(page, username, password);
 
-    // Navigate directly to roster with platoon rosterViewId in URL
-    const rosterUrl = getRosterUrl(platoon, date);
+    // Navigate to roster page
+    const d = formatDate(date);
+    const rosterUrl = `${TELESTAFF_BASE_URL}/telestaff/roster/d%5B${d}%5D`;
     console.log("[scraper] Navigating to roster:", rosterUrl);
     await page.goto(rosterUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-    console.log("[scraper] Roster page loaded, waiting for data...");
+    await page.waitForTimeout(2000);
+    console.log("[scraper] Roster page loaded");
 
-    // Wait for actual content to appear in the table (not just the empty table shell)
-    // Poll until the table has child elements or timeout after 20s
-    await page.waitForFunction(
-      () => {
-        const table = document.getElementById("tableGrid");
-        return table && table.innerHTML.trim().length > 100;
-      },
-      { timeout: 20000 }
-    ).catch(() => {
-      console.log("[scraper] Table still empty after 20s, trying page reload with roster view...");
+    // Debug: dump the dropdown area HTML to understand the widget
+    const dropdownHtml = await page.evaluate(() => {
+      // Look for anything that might be the roster/platoon dropdown
+      const candidates = [
+        ...Array.from(document.querySelectorAll('select')),
+        ...Array.from(document.querySelectorAll('[class*="dropdown"], [class*="combo"], [class*="select"], [class*="roster"], [class*="Roster"], [class*="view"], [class*="View"]')),
+      ];
+      return candidates.map(el => ({
+        tag: el.tagName,
+        id: el.id,
+        className: el.className,
+        text: el.textContent?.substring(0, 80)?.trim(),
+        html: el.outerHTML.substring(0, 300),
+      })).slice(0, 10);
     });
+    console.log("[scraper] Dropdown candidates:", JSON.stringify(dropdownHtml, null, 2));
 
-    // Check if table has content now
+    // Try to find and click the dropdown — it shows "[Select roster using the drop down arrow]"
+    // First try: look for a select element
+    const selectEl = page.locator('select').first();
+    const selectCount = await page.locator('select').count();
+    console.log("[scraper] Found", selectCount, "select elements");
+
+    if (selectCount > 0) {
+      // It's a real select — use selectOption with the platoon text
+      const viewId = PLATOON_ROSTER_VIEW_IDS[platoon];
+      try {
+        await selectEl.selectOption({ value: viewId });
+        console.log("[scraper] Selected via select value:", viewId);
+      } catch {
+        // Try selecting by label text
+        try {
+          await selectEl.selectOption({ label: new RegExp(`${platoon}.*Platoon`, 'i') as unknown as string });
+          console.log("[scraper] Selected via select label");
+        } catch {
+          console.log("[scraper] select option approaches failed");
+        }
+      }
+    } else {
+      // Custom dropdown — click the trigger then the option
+      console.log("[scraper] No select found, looking for custom dropdown...");
+      // The dropdown text from screenshot: "[Select roster using the drop down arrow]"
+      const trigger = page.locator('[class*="dropdown"] button, [class*="combo"] button, button:has-text("Platoon"), button:has-text("Select roster"), [class*="arrow"]').first();
+      try {
+        await trigger.click({ timeout: 5000 });
+        await page.waitForTimeout(500);
+        await page.getByText(`+${platoon} Platoon`).click({ timeout: 5000 });
+        console.log("[scraper] Custom dropdown selection done");
+      } catch (e) {
+        console.log("[scraper] Custom dropdown failed:", (e as Error).message?.substring(0, 150));
+      }
+    }
+
+    // Wait for stations to load (~5-10 seconds)
+    console.log("[scraper] Waiting for stations to load...");
+    await page.waitForTimeout(10000);
+
+    // Check table content
     const tableLength = await page.evaluate(() => {
       const table = document.getElementById("tableGrid");
       return table ? table.innerHTML.trim().length : 0;
     });
-    console.log("[scraper] Table content length:", tableLength);
-
-    // If still empty, try clicking the dropdown to trigger load
-    if (tableLength < 100) {
-      console.log("[scraper] Table empty, trying dropdown click...");
-      // Look for the roster dropdown trigger button/arrow
-      const dropdownTrigger = page.locator('[class*="dropdown"], [class*="combobox"], [role="combobox"], [class*="roster"] select, .rosterViewSelector, [id*="rosterView"]').first();
-      try {
-        await dropdownTrigger.click({ timeout: 5000 });
-        await page.waitForTimeout(500);
-        // Click the platoon option
-        await page.getByText(`${platoon} Platoon`, { exact: false }).first().click({ timeout: 5000 });
-        await page.waitForTimeout(5000);
-        console.log("[scraper] Dropdown selection done");
-      } catch (e) {
-        console.log("[scraper] Dropdown fallback failed:", (e as Error).message?.substring(0, 100));
-      }
-    }
-
+    console.log("[scraper] Table content length after platoon select:", tableLength);
     console.log("[scraper] Final URL:", page.url());
 
     // Parse the roster
