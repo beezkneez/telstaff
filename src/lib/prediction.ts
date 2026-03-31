@@ -68,8 +68,17 @@ export function getCallThroughRate(date: string): { ratio: number; label: string
   const day = d.getDay();
   const stat = isNearStatHoliday(date);
 
+  if (stat.near && stat.daysAway === 0) {
+    return { ratio: 0, label: `${stat.holiday} — virtually no call-ins` };
+  }
   if (stat.near && stat.daysAway <= 1) {
-    return { ratio: 1.5, label: `Near ${stat.holiday} — easy to fill, low demand` };
+    return { ratio: 0.5, label: `Day before/after ${stat.holiday} — almost no call-ins` };
+  }
+  if (stat.near && stat.daysAway <= 2) {
+    return { ratio: 1.0, label: `Near ${stat.holiday} — very low demand` };
+  }
+  if (stat.near && stat.daysAway <= 3) {
+    return { ratio: 1.5, label: `Near ${stat.holiday} — reduced demand` };
   }
 
   switch (day) {
@@ -134,7 +143,10 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
   let probability: PredictionResult["probability"];
   let explanation: string;
 
-  if (last6OffTotal === 0 && todayOtwp === null) {
+  if (callThroughRatio === 0) {
+    probability = "unlikely";
+    explanation = `Stat holiday — virtually no overtime call-ins expected.`;
+  } else if (last6OffTotal === 0 && todayOtwp === null) {
     probability = "unlikely";
     explanation = "No recent OT data available to predict.";
   } else if (positionsAhead < totalNamesOver6Off * 0.5) {
