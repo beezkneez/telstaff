@@ -11,6 +11,8 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [hasCredsSaved, setHasCredsSaved] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [defaults, setDefaults] = useState({ platoon: "1", homeStation: "1" });
+  const [defaultsSaved, setDefaultsSaved] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -19,6 +21,12 @@ export default function ProfilePage() {
         if (res.ok) {
           const data = await res.json();
           setHasCredsSaved(data.hasTelestaffCreds);
+          if (data.profile) {
+            setDefaults({
+              platoon: data.profile.platoon || "1",
+              homeStation: String(data.profile.homeStation || 1),
+            });
+          }
         }
       } catch {
         // ignore
@@ -90,6 +98,73 @@ export default function ProfilePage() {
               <span className="w-2 h-2 rounded-full bg-success" />
               <span className="text-xs text-success font-medium">Active</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Default platoon & station */}
+      <div className="rounded-xl bg-surface border border-border-subtle overflow-hidden mb-6 animate-fade-slide-up delay-200">
+        <div className="px-5 py-4 border-b border-border-subtle">
+          <h2 className="font-display text-sm font-bold tracking-wider text-muted uppercase">
+            Home Defaults
+          </h2>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="font-mono text-[10px] tracking-wider text-muted uppercase">
+            Dashboard loads your home platoon and station on first visit
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                Platoon
+              </label>
+              <select
+                value={defaults.platoon}
+                onChange={(e) => setDefaults((prev) => ({ ...prev, platoon: e.target.value }))}
+                className="w-full px-4 py-3 bg-background border border-border text-foreground transition-colors focus:border-ember/50 appearance-none cursor-pointer"
+              >
+                {["1", "2", "3", "4"].map((p) => (
+                  <option key={p} value={p}>Platoon {p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                Home Station
+              </label>
+              <select
+                value={defaults.homeStation}
+                onChange={(e) => setDefaults((prev) => ({ ...prev, homeStation: e.target.value }))}
+                className="w-full px-4 py-3 bg-background border border-border text-foreground transition-colors focus:border-ember/50 appearance-none cursor-pointer"
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((s) => (
+                  <option key={s} value={s}>Station {s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={async () => {
+                const res = await fetch("/api/profile", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(defaults),
+                });
+                if (res.ok) {
+                  setDefaultsSaved(true);
+                  setTimeout(() => setDefaultsSaved(false), 3000);
+                }
+              }}
+              className="px-6 py-2.5 bg-ember hover:bg-ember-glow text-white text-sm font-semibold transition-all hover:shadow-[0_0_20px_rgba(255,74,28,0.3)]"
+            >
+              Save Defaults
+            </button>
+            {defaultsSaved && (
+              <span className="font-mono text-[10px] text-success tracking-wider animate-fade-in uppercase">
+                Saved
+              </span>
+            )}
           </div>
         </div>
       </div>

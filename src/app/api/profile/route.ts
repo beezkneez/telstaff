@@ -33,22 +33,29 @@ export async function PUT(req: Request) {
   }
 
   const userId = (session.user as { id: string }).id;
-  const { telestaff_username, telestaff_password } = await req.json();
+  const body = await req.json();
 
-  if (!telestaff_username || !telestaff_password) {
-    return NextResponse.json(
-      { error: "Both username and password are required" },
-      { status: 400 }
-    );
+  // Update Telestaff credentials if provided
+  if (body.telestaff_username && body.telestaff_password) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        telestaff_username: encrypt(body.telestaff_username),
+        telestaff_password: encrypt(body.telestaff_password),
+      },
+    });
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      telestaff_username: encrypt(telestaff_username),
-      telestaff_password: encrypt(telestaff_password),
-    },
-  });
+  // Update profile (platoon, station) if provided
+  if (body.platoon || body.homeStation) {
+    await prisma.profile.update({
+      where: { userId },
+      data: {
+        ...(body.platoon && { platoon: body.platoon }),
+        ...(body.homeStation && { homeStation: parseInt(body.homeStation) }),
+      },
+    });
+  }
 
   return NextResponse.json({ success: true });
 }

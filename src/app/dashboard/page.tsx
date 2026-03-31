@@ -35,13 +35,39 @@ type ViewMode = "my-station" | "all-stations";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
-  const [platoon, setPlatoon] = useState("1");
+  const [platoon, setPlatoon] = useState("");
   const [station, setStation] = useState(1);
-  const [viewMode, setViewMode] = useState<ViewMode>("all-stations");
+  const [viewMode, setViewMode] = useState<ViewMode>("my-station");
   const [allStations, setAllStations] = useState<StationStaffing[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMock, setIsMock] = useState(true);
   const [error, setError] = useState("");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
+  // Load user's home platoon and station on first load
+  useEffect(() => {
+    async function loadDefaults() {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.profile) {
+            setPlatoon(data.profile.platoon || "1");
+            setStation(data.profile.homeStation || 1);
+          } else {
+            setPlatoon("1");
+          }
+        } else {
+          setPlatoon("1");
+        }
+      } catch {
+        setPlatoon("1");
+      } finally {
+        setProfileLoaded(true);
+      }
+    }
+    loadDefaults();
+  }, []);
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -51,6 +77,7 @@ export default function DashboardPage() {
   });
 
   const fetchData = useCallback(async () => {
+    if (!platoon) return;
     setLoading(true);
     setError("");
 
@@ -71,8 +98,10 @@ export default function DashboardPage() {
   }, [platoon]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (profileLoaded && platoon) {
+      fetchData();
+    }
+  }, [fetchData, profileLoaded, platoon]);
 
   const selectedStation =
     viewMode === "my-station"
