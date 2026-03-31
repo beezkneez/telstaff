@@ -27,6 +27,20 @@ interface OvertimeData {
     dayShiftPlatoon: string | null;
     nightShiftPlatoon: string | null;
   }[];
+  prediction: {
+    userPosition: number;
+    positionsAhead: number;
+    slotsNeeded: number;
+    acceptanceRate: number;
+    acceptanceLabel: string;
+    namesNeededToCall: number;
+    willGetCalled: boolean;
+    probability: "high" | "medium" | "low" | "unlikely";
+    explanation: string;
+    nearStatHoliday: boolean;
+    statHolidayName: string | null;
+    dayOfWeek: string;
+  } | null;
 }
 
 interface OTWPResult {
@@ -171,6 +185,102 @@ export default function OvertimePage() {
               </div>
             </div>
           </div>
+
+          {/* Prediction */}
+          {data.prediction && data.eligible && (
+            <div className={`border p-5 animate-fade-slide-up delay-75 ${
+              data.prediction.probability === "high"
+                ? "bg-ember/5 border-ember/30"
+                : data.prediction.probability === "medium"
+                  ? "bg-amber/5 border-amber/30"
+                  : "bg-surface border-border"
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
+                  Prediction
+                </h2>
+                <span className={`font-mono text-[10px] tracking-wider uppercase px-2 py-1 border ${
+                  data.prediction.probability === "high"
+                    ? "bg-ember/20 text-ember border-ember/30"
+                    : data.prediction.probability === "medium"
+                      ? "bg-amber/20 text-amber border-amber/30"
+                      : data.prediction.probability === "low"
+                        ? "bg-surface-overlay text-muted border-border"
+                        : "bg-surface-overlay text-muted border-border"
+                }`}>
+                  {data.prediction.probability} chance
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Your Position</p>
+                  <p className="font-display text-2xl font-bold text-foreground">#{data.prediction.userPosition}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Slots Needed</p>
+                  <p className="font-display text-2xl font-bold text-ember">{data.prediction.slotsNeeded}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Names They'll Call</p>
+                  <p className="font-display text-2xl font-bold text-amber">~{data.prediction.namesNeededToCall}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Acceptance Rate</p>
+                  <p className="font-display text-2xl font-bold">{Math.round(data.prediction.acceptanceRate * 100)}%</p>
+                </div>
+              </div>
+
+              <p className="font-mono text-xs text-foreground leading-relaxed">
+                {data.prediction.explanation}
+              </p>
+
+              <p className="font-mono text-[9px] text-muted mt-2">
+                {data.prediction.acceptanceLabel}
+                {data.prediction.nearStatHoliday && ` • Near ${data.prediction.statHolidayName}`}
+              </p>
+            </div>
+          )}
+
+          {/* Running Tally */}
+          {otwpData.length > 0 && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-100">
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">
+                OT Call-In Tally — Last 6-Off
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {["1", "2", "3", "4"].map((plt) => {
+                  const dayTotal = otwpData
+                    .filter((o) => o.dayShiftPlatoon === plt)
+                    .reduce((s, o) => s + o.dayShiftCount, 0);
+                  const nightTotal = otwpData
+                    .filter((o) => o.nightShiftPlatoon === plt)
+                    .reduce((s, o) => s + o.nightShiftCount, 0);
+                  const total = dayTotal + nightTotal;
+                  return (
+                    <div key={plt} className="p-3 border border-border-subtle">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className="w-2.5 h-2.5"
+                          style={{ backgroundColor: `var(--platoon-${plt})` }}
+                        />
+                        <span className="font-mono text-[10px] tracking-wider uppercase">
+                          PLT-{plt}
+                        </span>
+                      </div>
+                      <p className="font-display text-2xl font-bold" style={{ color: `var(--platoon-${plt})` }}>
+                        {total}
+                      </p>
+                      <p className="font-mono text-[9px] text-muted mt-1">
+                        {dayTotal > 0 && `${dayTotal} day`}{dayTotal > 0 && nightTotal > 0 && " / "}{nightTotal > 0 && `${nightTotal} night`}
+                        {total === 0 && "0 call-ins"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Rotation Overview */}
           <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-150">

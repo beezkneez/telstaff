@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off } from "@/lib/rotation";
 import { getCallInLists, findMemberPosition, getPositionsAhead } from "@/lib/callin-list";
+import { predictOvertime, isNearStatHoliday, getAcceptanceRate } from "@/lib/prediction";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -96,6 +97,32 @@ export async function GET(req: Request) {
     };
   });
 
+  // Build prediction if user is eligible and we have position data
+  let prediction = null;
+  if (callInData?.positionsAhead !== null && callInData?.positionsAhead !== undefined) {
+    // Estimate slots needed from recent OTWP data
+    const recentOtwp = await prisma.oTWPCache.findMany({
+      where: {
+        date: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+      orderBy: { date: "desc" },
+      take: 10,
+    });
+
+    const avgSlots = recentOtwp.length > 0
+      ? Math.round(recentOtwp.reduce((s, o) => s + o.count, 0) / recentOtwp.length)
+      : 8; // default estimate
+
+    const statInfo = isNearStatHoliday(date);
+    const acceptanceInfo = getAcceptanceRate(date);
+
+    prediction = predictOvertime(
+      callInData.positionsAhead,
+      avgSlots,
+      date
+    );
+  }
+
   return NextResponse.json({
     date,
     userPlatoon,
@@ -106,5 +133,6 @@ export async function GET(req: Request) {
     allPlatoons,
     callInData,
     sixOffDetails,
+    prediction,
   });
 }
