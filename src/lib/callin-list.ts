@@ -108,14 +108,23 @@ function extractNames(cols: string[]): string[] {
 
 export function findMemberPosition(
   list: CallInList,
-  name: string
+  lastName: string
 ): number | null {
-  const lower = name.toLowerCase();
-  const member = list.members.find((m) =>
-    m.name.toLowerCase().includes(lower) ||
-    lower.includes(m.name.toLowerCase())
+  const upper = lastName.toUpperCase().trim();
+  if (!upper) return null;
+
+  // Exact match first (sheet has last names only, sometimes with first name)
+  const exact = list.members.find((m) => {
+    const sheetName = m.name.toUpperCase().split(",")[0].trim();
+    return sheetName === upper;
+  });
+  if (exact) return exact.position;
+
+  // Partial match fallback (e.g., "JOHNSON, Mark" contains "JOHNSON")
+  const partial = list.members.find((m) =>
+    m.name.toUpperCase().startsWith(upper)
   );
-  return member?.position ?? null;
+  return partial?.position ?? null;
 }
 
 export function getPositionsAhead(

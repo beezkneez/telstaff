@@ -50,12 +50,10 @@ export async function GET(req: Request) {
     const myList = lists.find((l) => l.platoon === userPlatoon);
 
     if (myList) {
-      // Try to find user by last name
-      const lastName = userName.split(" ").pop()?.toUpperCase() || "";
-      const firstName = userName.split(" ")[0]?.toUpperCase() || "";
-      const position =
-        findMemberPosition(myList, lastName) ||
-        findMemberPosition(myList, firstName);
+      // Match by last name only (sheet uses last names), within user's platoon
+      const nameParts = userName.trim().split(" ");
+      const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+      const position = findMemberPosition(myList, lastName);
 
       const positionsAhead = position
         ? getPositionsAhead(myList, position)
