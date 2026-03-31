@@ -322,11 +322,38 @@ export async function scrapeRoster(
     // Login
     await login(page, username, password);
 
-    // Navigate to roster page
-    const rosterUrl = getRosterUrl(platoon, date);
-    console.log("[scraper] Navigating to roster:", rosterUrl);
-    await page.goto(rosterUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-    console.log("[scraper] Roster page loaded, URL:", page.url());
+    // Navigate to roster page (without rosterViewId — need to select from dropdown)
+    const d = formatDate(date);
+    const rosterBaseUrl = `${TELESTAFF_BASE_URL}/telestaff/roster/d%5B${d}%5D?dynamicDateOffSet=0&collapsedStateChanges=&refresh=true`;
+    console.log("[scraper] Navigating to roster page...");
+    await page.goto(rosterBaseUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+    console.log("[scraper] Roster page loaded, selecting platoon...");
+
+    // Select the platoon from the dropdown
+    const viewId = PLATOON_ROSTER_VIEW_IDS[platoon];
+    // The dropdown is a select element — find it and select the right option
+    // Try selecting by the rosterViewId value in the dropdown
+    const dropdown = page.locator('select, .dropdown, [id*="roster"], [id*="view"]').first();
+    await dropdown.waitFor({ state: "attached", timeout: 10000 });
+
+    // Try to select by value matching the viewId, or click the dropdown and find the platoon option
+    try {
+      await dropdown.selectOption({ value: viewId });
+      console.log("[scraper] Selected platoon via dropdown value:", viewId);
+    } catch {
+      // If that doesn't work, try clicking the dropdown and selecting by text
+      console.log("[scraper] selectOption failed, trying click approach...");
+      await dropdown.click();
+      await page.waitForTimeout(500);
+      // Look for option containing the platoon number
+      const option = page.getByText(`${platoon} Platoon`, { exact: false }).first();
+      await option.click();
+      console.log("[scraper] Selected platoon via text click");
+    }
+
+    // Wait for the roster to load after platoon selection
+    await page.waitForTimeout(5000);
+    console.log("[scraper] Platoon selected, URL:", page.url());
 
     // Parse the roster
     const stations = await parseRosterPage(page, platoon, date || formatDate());
