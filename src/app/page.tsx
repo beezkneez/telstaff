@@ -45,9 +45,8 @@ export default function Home() {
           </div>
 
           <h1 className="font-display text-6xl sm:text-8xl font-bold tracking-[0.05em] leading-[0.9] mb-2">
-            <span className="block text-foreground">STATION</span>
-            <span className="block text-foreground">COMMAND</span>
-            <span className="block text-ember">CENTRE</span>
+            <span className="block text-foreground">BETTER</span>
+            <span className="block text-ember">STAFF</span>
           </h1>
 
           {/* Divider line */}
