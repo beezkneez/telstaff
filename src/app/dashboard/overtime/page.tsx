@@ -28,18 +28,19 @@ interface OvertimeData {
     nightShiftPlatoon: string | null;
   }[];
   prediction: {
-    userPosition: number;
     positionsAhead: number;
-    slotsNeeded: number;
-    acceptanceRate: number;
-    acceptanceLabel: string;
-    namesNeededToCall: number;
-    willGetCalled: boolean;
+    last6OffTotal: number;
+    todayOtwp: number | null;
+    callThroughRatio: number;
+    callThroughLabel: string;
+    namesTheyWillCall: number;
     probability: "high" | "medium" | "low" | "unlikely";
+    willGetCalled: boolean;
     explanation: string;
     nearStatHoliday: boolean;
     statHolidayName: string | null;
     dayOfWeek: string;
+    factors: { name: string; value: string; impact: string }[];
   } | null;
   ytdNeeded: { platoon: string; total: number }[];
   ytdWorked: { platoon: string; total: number }[];
@@ -216,31 +217,44 @@ export default function OvertimePage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                 <div>
-                  <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Your Position</p>
-                  <p className="font-display text-2xl font-bold text-foreground">#{data.prediction.userPosition}</p>
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">You Are</p>
+                  <p className="font-display text-2xl font-bold text-foreground">{data.prediction.positionsAhead} away</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Slots Needed</p>
-                  <p className="font-display text-2xl font-bold text-ember">{data.prediction.slotsNeeded}</p>
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Last 6-Off OT</p>
+                  <p className="font-display text-2xl font-bold text-ember">{data.prediction.last6OffTotal}</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Names They'll Call</p>
-                  <p className="font-display text-2xl font-bold text-amber">~{data.prediction.namesNeededToCall}</p>
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Call-Through</p>
+                  <p className="font-display text-2xl font-bold text-amber">{data.prediction.callThroughRatio}:1</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Acceptance Rate</p>
-                  <p className="font-display text-2xl font-bold">{Math.round(data.prediction.acceptanceRate * 100)}%</p>
+                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Names Called</p>
+                  <p className="font-display text-2xl font-bold">~{data.prediction.namesTheyWillCall}</p>
                 </div>
               </div>
 
-              <p className="font-mono text-xs text-foreground leading-relaxed">
+              <p className="font-mono text-sm text-foreground leading-relaxed">
                 {data.prediction.explanation}
               </p>
 
-              <p className="font-mono text-[9px] text-muted mt-2">
-                {data.prediction.acceptanceLabel}
-                {data.prediction.nearStatHoliday && ` • Near ${data.prediction.statHolidayName}`}
-              </p>
+              {/* Factors breakdown */}
+              <div className="mt-4 border border-border-subtle">
+                <div className="px-3 py-2 bg-surface-raised/50 border-b border-border-subtle">
+                  <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Prediction Factors</span>
+                </div>
+                <div className="divide-y divide-border-subtle">
+                  {data.prediction.factors.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between px-3 py-2">
+                      <span className="font-mono text-xs text-muted">{f.name}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-xs text-foreground font-medium">{f.value}</span>
+                        <span className="font-mono text-[10px] text-muted hidden sm:block">{f.impact}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

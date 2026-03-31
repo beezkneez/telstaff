@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off } from "@/lib/rotation";
 import { getCallInLists, findMemberPosition, getPositionsAhead } from "@/lib/callin-list";
-import { predictOvertime, isNearStatHoliday, getAcceptanceRate } from "@/lib/prediction";
+import { predictOvertime } from "@/lib/prediction";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -97,30 +97,35 @@ export async function GET(req: Request) {
     };
   });
 
-  // Build prediction if user is eligible and we have position data
+  // Build prediction if user has position data
   let prediction = null;
   if (callInData?.positionsAhead !== null && callInData?.positionsAhead !== undefined) {
-    // Estimate slots needed from recent OTWP data
-    const recentOtwp = await prisma.oTWPCache.findMany({
-      where: {
-        date: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-      },
-      orderBy: { date: "desc" },
-      take: 10,
+    // Get total OTWP from user's last 6-off eligible days
+    let last6OffTotal = 0;
+    for (const detail of sixOffDetails) {
+      if (!detail.eligible) continue;
+      const dateObj = new Date(detail.date + "T00:00:00Z");
+      const otwpEntries = await prisma.oTWPCache.findMany({
+        where: { date: dateObj },
+      });
+      last6OffTotal += otwpEntries.reduce((s, o) => s + o.count, 0);
+    }
+
+    // Get today's OTWP if available
+    const todayObj = new Date(date + "T00:00:00Z");
+    const todayOtwpEntries = await prisma.oTWPCache.findMany({
+      where: { date: todayObj },
     });
+    const todayOtwp = todayOtwpEntries.length > 0
+      ? todayOtwpEntries.reduce((s, o) => s + o.count, 0)
+      : null;
 
-    const avgSlots = recentOtwp.length > 0
-      ? Math.round(recentOtwp.reduce((s, o) => s + o.count, 0) / recentOtwp.length)
-      : 8; // default estimate
-
-    const statInfo = isNearStatHoliday(date);
-    const acceptanceInfo = getAcceptanceRate(date);
-
-    prediction = predictOvertime(
-      callInData.positionsAhead,
-      avgSlots,
-      date
-    );
+    prediction = predictOvertime({
+      positionsAhead: callInData.positionsAhead,
+      last6OffTotal,
+      todayOtwp,
+      date,
+    });
   }
 
   // YTD tallies

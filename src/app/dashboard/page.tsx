@@ -337,11 +337,13 @@ export default function DashboardPage() {
       {!loading && viewMode === "all-stations" && allStations.length > 0 && (
         <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-px animate-fade-slide-up delay-300">
           {(() => {
+            const isOff = (t: { type: string; truck: string }) =>
+              t.type === "OffRoster" || /^ff\s+\d/i.test(t.truck);
             const activeUnits = allStations.reduce(
-              (sum, s) => sum + s.trucks.filter((t) => t.type !== "OffRoster").length, 0
+              (sum, s) => sum + s.trucks.filter((t) => !isOff(t)).length, 0
             );
             const activeCrew = allStations.reduce(
-              (sum, s) => sum + s.trucks.filter((t) => t.type !== "OffRoster").reduce((t, u) => t + u.crew.length, 0), 0
+              (sum, s) => sum + s.trucks.filter((t) => !isOff(t)).reduce((t, u) => t + u.crew.length, 0), 0
             );
             const totalCrew = allStations.reduce(
               (sum, s) => sum + s.trucks.reduce((t, u) => t + u.crew.length, 0), 0
