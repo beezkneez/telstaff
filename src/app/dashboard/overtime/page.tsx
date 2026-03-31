@@ -44,6 +44,15 @@ interface OvertimeData {
   } | null;
   ytdNeeded: { platoon: string; total: number }[];
   ytdWorked: { platoon: string; total: number }[];
+  shortfalls: {
+    date: string;
+    platoon: string;
+    shift: "day" | "night";
+    requiredCrew: number;
+    actualCrew: number;
+    holes: number;
+    truckBreakdown: { truck: string; type: string; required: number; actual: number; short: number }[];
+  }[];
 }
 
 interface OTWPResult {
@@ -255,6 +264,65 @@ export default function OvertimePage() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Staffing Holes */}
+          {data.shortfalls && data.shortfalls.length > 0 && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-100">
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">
+                Schedule Holes — Your Call-In Block
+              </h2>
+              <div className="space-y-3">
+                {data.shortfalls.map((sf, i) => {
+                  const dateLabel = new Date(sf.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                  return (
+                    <div key={i} className="border border-border-subtle">
+                      <div className="px-3 py-2 bg-surface-raised/50 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-xs text-foreground">{dateLabel}</span>
+                          <span className={`font-mono text-[10px] tracking-wider uppercase ${sf.shift === "day" ? "text-amber" : "text-platoon-3"}`}>
+                            {sf.shift} shift
+                          </span>
+                          <span
+                            className="font-mono text-[10px] px-1.5 py-0.5"
+                            style={{
+                              backgroundColor: `color-mix(in srgb, var(--platoon-${sf.platoon}) 15%, transparent)`,
+                              color: `var(--platoon-${sf.platoon})`,
+                            }}
+                          >
+                            PLT-{sf.platoon}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-muted">{sf.actualCrew}/{sf.requiredCrew}</span>
+                          <span className="font-mono text-sm text-ember font-bold">{sf.holes} holes</span>
+                        </div>
+                      </div>
+                      {sf.truckBreakdown.length > 0 && (
+                        <div className="px-3 py-2 divide-y divide-border-subtle">
+                          {sf.truckBreakdown.slice(0, 8).map((t, j) => (
+                            <div key={j} className="flex items-center justify-between py-1">
+                              <span className="font-mono text-[11px] text-muted">{t.truck}</span>
+                              <span className="font-mono text-[11px] text-ember">
+                                {t.actual}/{t.required} ({t.short} short)
+                              </span>
+                            </div>
+                          ))}
+                          {sf.truckBreakdown.length > 8 && (
+                            <p className="font-mono text-[10px] text-muted py-1">
+                              +{sf.truckBreakdown.length - 8} more trucks short
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="font-mono text-[10px] text-muted tracking-wider mt-3">
+                Holes = required crew per truck minus actual assigned. These are the OT spots that need filling.
+              </p>
             </div>
           )}
 

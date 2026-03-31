@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off } from "@/lib/rotation";
 import { getCallInLists, findMemberPosition, getPositionsAhead } from "@/lib/callin-list";
 import { predictOvertime } from "@/lib/prediction";
+import { calculateShortfall, type StaffingShortfall } from "@/lib/staffing-calc";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -210,6 +211,36 @@ export async function GET(req: Request) {
     console.error("[overtime] YTD tally error:", err);
   }
 
+  // Calculate staffing shortfalls for eligible days
+  const shortfalls: StaffingShortfall[] = [];
+  try {
+    for (const detail of sixOffDetails) {
+      if (!detail.eligible) continue;
+      const dateObj = new Date(detail.date + "T00:00:00Z");
+
+      // Check each on-shift platoon's roster
+      for (const shiftType of ["day", "night"] as const) {
+        const shiftPlatoon = shiftType === "day" ? detail.dayShiftPlatoon : detail.nightShiftPlatoon;
+        if (!shiftPlatoon) continue;
+
+        const cached = await prisma.staffingCache.findMany({
+          where: { date: dateObj, platoon: shiftPlatoon },
+          orderBy: { station: "asc" },
+        });
+
+        if (cached.length > 0) {
+          const stations = cached.map((c) => c.data as unknown as { station: number; trucks: { truck: string; type: string; crew: { name: string; rank: string }[] }[] });
+          const shortfall = calculateShortfall(stations, shiftPlatoon, detail.date, shiftType);
+          if (shortfall.holes > 0) {
+            shortfalls.push(shortfall);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[overtime] Shortfall calc error:", err);
+  }
+
   return NextResponse.json({
     date,
     userPlatoon,
@@ -221,6 +252,7 @@ export async function GET(req: Request) {
     callInData,
     sixOffDetails,
     prediction,
+    shortfalls,
     ytdNeeded,
     ytdWorked,
   });
