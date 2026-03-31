@@ -13,7 +13,9 @@ async function getBrowser(): Promise<Browser> {
 export interface PaybackEntry {
   date: string;
   name: string;
+  fullName: string;
   details: string;
+  platoon?: string;
 }
 
 export interface PaybacksData {
@@ -53,27 +55,14 @@ export async function scrapePaybacks(
     await page.waitForTimeout(5000);
     console.log("[paybacks] Dashboard loaded, URL:", page.url());
 
-    // Debug: dump dashboard structure
-    const debug = await page.evaluate(() => {
-      const titles = Array.from(document.querySelectorAll(".dashboardItemTitle"))
-        .map(el => el.textContent?.trim());
-      const allClasses = Array.from(document.querySelectorAll("[class*='dashboard']"))
-        .slice(0, 10)
-        .map(el => ({ tag: el.tagName, class: el.className, text: el.textContent?.trim().substring(0, 60) }));
-      const dateRanges = document.querySelectorAll(".dateRange").length;
-      const displayBlocks = document.querySelectorAll(".displayBlock.fontResize").length;
-      return { titles, allClasses, dateRanges, displayBlocks, bodyLen: document.body.innerHTML.length };
-    });
-    console.log("[paybacks] Debug:", JSON.stringify(debug));
-
     // Parse the paybacks data
     // Structure: div.dashboardItemTitle ("Owes Me" / "I Owe")
     //   followed by sibling div.dashboardItem entries
     //   each entry has: span.dateRange + span.displayBlock.fontResize (name) + span.displayBlock.fontResize (details)
     const data = await page.evaluate(() => {
       const result: {
-        owesMe: { date: string; name: string; details: string }[];
-        iOwe: { date: string; name: string; details: string }[];
+        owesMe: { date: string; name: string; fullName: string; details: string }[];
+        iOwe: { date: string; name: string; fullName: string; details: string }[];
       } = { owesMe: [], iOwe: [] };
 
       // Get all title and item elements in DOM order
@@ -104,11 +93,12 @@ export async function scrapePaybacks(
         const nameRaw = displayBlocks[0]?.textContent?.trim() || "";
         const details = displayBlocks[1]?.textContent?.trim() || "";
 
-        if (nameRaw) {
+        if (nameRaw && !nameRaw.includes("Remaining") && !nameRaw.includes("In Period")) {
           const nameClean = nameRaw.match(/^([A-Za-z'-]+,\s*[A-Za-z'-]+)/);
           currentList.push({
             date,
             name: nameClean ? nameClean[1] : nameRaw.split(/\d/)[0].trim(),
+            fullName: nameRaw,
             details,
           });
         }

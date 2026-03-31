@@ -5,7 +5,9 @@ import { useState, useEffect } from "react";
 interface PaybackEntry {
   date: string;
   name: string;
+  fullName: string;
   details: string;
+  platoon?: string;
 }
 
 interface PaybacksData {
@@ -80,9 +82,23 @@ export default function PaybacksPage() {
                 {data.owesMe.map((entry, i) => (
                   <div key={i} className="px-4 py-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-sm text-foreground font-medium">
-                        {entry.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm text-foreground font-medium">
+                          {entry.name}
+                        </span>
+                        {entry.platoon && (
+                          <span
+                            className="font-mono text-[9px] tracking-wider px-1.5 py-0.5"
+                            style={{
+                              backgroundColor: `color-mix(in srgb, var(--platoon-${entry.platoon}) 15%, transparent)`,
+                              color: `var(--platoon-${entry.platoon})`,
+                              border: `1px solid color-mix(in srgb, var(--platoon-${entry.platoon}) 30%, transparent)`,
+                            }}
+                          >
+                            PLT-{entry.platoon}
+                          </span>
+                        )}
+                      </div>
                       <span className="font-mono text-[9px] tracking-wider text-muted uppercase">
                         {entry.date}
                       </span>
@@ -115,9 +131,23 @@ export default function PaybacksPage() {
                 {data.iOwe.map((entry, i) => (
                   <div key={i} className="px-4 py-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-sm text-foreground font-medium">
-                        {entry.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm text-foreground font-medium">
+                          {entry.name}
+                        </span>
+                        {entry.platoon && (
+                          <span
+                            className="font-mono text-[9px] tracking-wider px-1.5 py-0.5"
+                            style={{
+                              backgroundColor: `color-mix(in srgb, var(--platoon-${entry.platoon}) 15%, transparent)`,
+                              color: `var(--platoon-${entry.platoon})`,
+                              border: `1px solid color-mix(in srgb, var(--platoon-${entry.platoon}) 30%, transparent)`,
+                            }}
+                          >
+                            PLT-{entry.platoon}
+                          </span>
+                        )}
+                      </div>
                       <span className="font-mono text-[9px] tracking-wider text-muted uppercase">
                         {entry.date}
                       </span>

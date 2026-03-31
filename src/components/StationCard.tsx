@@ -108,13 +108,13 @@ export default function StationCard({
                       }`}>
                         {member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
-                      <span className="font-mono text-xs truncate">
+                      <span className="font-mono text-sm truncate">
                         {member.name}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       {member.status && (
-                        <span className={`font-mono text-[9px] tracking-wider px-1.5 py-0.5 ${
+                        <span className={`font-mono text-[11px] tracking-wider px-1.5 py-0.5 ${
                           member.status === "REG"
                             ? "text-muted"
                             : member.status?.includes("Vac")
@@ -124,7 +124,7 @@ export default function StationCard({
                           {member.status}
                         </span>
                       )}
-                      <span className={`font-mono text-[9px] tracking-wider uppercase ${
+                      <span className={`font-mono text-[11px] tracking-wider uppercase ${
                         member.rank?.includes("Captain")
                           ? "text-amber"
                           : member.rank?.includes("Lieutenant")
@@ -162,11 +162,11 @@ export default function StationCard({
                       <div className="w-5 h-5 flex items-center justify-center font-mono text-[9px] font-bold bg-surface-overlay border border-border text-muted">
                         {member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
-                      <span className="font-mono text-xs truncate text-muted">
+                      <span className="font-mono text-sm truncate text-muted">
                         {member.name}
                       </span>
                     </div>
-                    <span className="font-mono text-[9px] tracking-wider uppercase text-muted">
+                    <span className="font-mono text-[11px] tracking-wider uppercase text-muted">
                       {member.rank?.replace(" Hz3", "").replace(" Pump,Hz3", "")}
                     </span>
                   </div>
