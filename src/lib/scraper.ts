@@ -85,10 +85,13 @@ async function parseRosterPage(
   platoon: string,
   date: string
 ): Promise<StationStaffing[]> {
-  // Wait for the roster content to load
-  await page.waitForSelector(".roster-content, .rosterBody, table, .treeNode", {
-    timeout: 15000,
+  // Wait for the roster table to be in the DOM
+  await page.waitForSelector("#tableGrid", {
+    state: "attached",
+    timeout: 30000,
   });
+  // Give the roster data time to fully populate
+  await page.waitForTimeout(3000);
 
   // Expand all collapsed stations by clicking all + buttons
   const expandButtons = await page.$$('.treeNodeExpand, .expand-icon, [class*="expand"], [class*="collapsed"] > .toggle, img[src*="plus"], .tree-toggle');
