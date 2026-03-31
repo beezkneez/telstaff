@@ -24,7 +24,7 @@ export interface StationStaffing {
 
 export const PLATOON_ROSTER_VIEW_IDS: Record<string, string> = {
   "1": "192_1",
-  "2": "111_1",
+  "2": "193_1",
   "3": "194_1",
   "4": "195_1",
 };
