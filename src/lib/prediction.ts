@@ -175,28 +175,56 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
   let probability: PredictionResult["probability"];
   let explanation: string;
 
+  // Build a detailed, scenario-specific explanation
+  const avgPerDay = last6OffTotal > 0 ? Math.round(last6OffTotal / 4) : 0;
+  const buffer = totalNamesOver6Off - positionsAhead;
+
   if (callThroughRatio === 0) {
     probability = "unlikely";
-    explanation = `Stat holiday — virtually no overtime call-ins expected.`;
+    explanation = `It's ${stat.holiday}. Historically there are virtually zero overtime call-ins on stat holidays or the day before/after. Even though you're only ${positionsAhead} away on the list, don't expect the phone to ring.`;
+  } else if (stat.near && stat.daysAway <= 1 && positionsAhead > 10) {
+    probability = "unlikely";
+    explanation = `You're ${positionsAhead} away on the list, but ${stat.holiday} is ${stat.daysAway === 0 ? "today" : "tomorrow"}. Around stat holidays, barely anyone books off so overtime demand basically disappears. Very unlikely you'll get called.`;
+  } else if (stat.near && stat.daysAway <= 1 && positionsAhead <= 10) {
+    probability = "low";
+    explanation = `You're only ${positionsAhead} away which would normally be a sure thing, but ${stat.holiday} is ${stat.daysAway === 0 ? "today" : stat.daysAway === 1 ? "tomorrow" : `${stat.daysAway} days away`}. Stat holidays kill overtime demand — even being this close, probably won't get called.`;
   } else if (last6OffTotal === 0 && todayOtwp === null) {
     probability = "unlikely";
-    explanation = "No recent OT data available to predict.";
+    explanation = "No recent overtime data available yet. Once the scraper collects more data, the prediction will be more accurate.";
+  } else if (positionsAhead < totalNamesOver6Off * 0.3) {
+    probability = "high";
+    explanation = `You're ${positionsAhead} away on the list. Last 6-off, they needed ${last6OffTotal} OT members across 4 days (averaging ${avgPerDay} per day). To fill those spots, they'd call through roughly ${totalNamesOver6Off} names on the list. You're well within that range with ${buffer} names of buffer — expect the call, probably multiple shifts.`;
+    if (recentTrend === "rising") {
+      explanation += ` OT demand has been trending up lately, which makes this even more likely.`;
+    }
   } else if (positionsAhead < totalNamesOver6Off * 0.5) {
     probability = "high";
-    explanation = `Last 6-off had ${last6OffTotal} OT call-ins. At ~${callThroughRatio}:1 call-through, they'd go through ~${totalNamesOver6Off} names. You're ${positionsAhead} away — expect the call.`;
+    explanation = `You're ${positionsAhead} away. Last 6-off saw ${last6OffTotal} OT call-ins total. At a ${callThroughRatio}:1 call-through rate (${dayOfWeek} pattern), they'd go through about ${totalNamesOver6Off} names. You've got a solid ${buffer}-name cushion — very likely to get at least one call.`;
   } else if (positionsAhead < totalNamesOver6Off * 0.85) {
     probability = "medium";
-    explanation = `Last 6-off had ${last6OffTotal} OT call-ins (~${totalNamesOver6Off} names called). You're ${positionsAhead} away — good chance you'll get called.`;
+    explanation = `You're ${positionsAhead} away on the list. Last cycle had ${last6OffTotal} OT members, meaning they called through roughly ${totalNamesOver6Off} names. That puts you in the zone — you'll probably get a call on the busier days, but might not get hit every shift. ${avgPerDay > 10 ? `With ${avgPerDay} per day average, the busy days should reach you.` : `With only ${avgPerDay} per day average, it's a coin flip.`}`;
+    if (recentTrend === "rising") {
+      explanation += ` Demand has been trending up recently which works in your favour.`;
+    } else if (recentTrend === "falling") {
+      explanation += ` However, demand has been trending down lately which could push you out of range.`;
+    }
   } else if (positionsAhead < totalNamesOver6Off * 1.1) {
     probability = "low";
-    explanation = `Last 6-off had ${last6OffTotal} OT call-ins (~${totalNamesOver6Off} names called). You're ${positionsAhead} away — borderline, could go either way.`;
+    explanation = `You're ${positionsAhead} away — right on the edge. Last 6-off had ${last6OffTotal} call-ins (~${totalNamesOver6Off} names called through). You're ${positionsAhead > totalNamesOver6Off ? `${positionsAhead - totalNamesOver6Off} past` : `${buffer} inside`} the estimated cutoff. Could go either way — if a couple extra people book off or if it's a particularly busy night, you might get the call. But don't count on it.`;
+    if (stat.near) {
+      explanation += ` Plus ${stat.holiday} is ${stat.daysAway} days away which usually reduces demand.`;
+    }
+  } else if (positionsAhead < totalNamesOver6Off * 1.5) {
+    probability = "unlikely";
+    explanation = `You're ${positionsAhead} away on the list. Based on last 6-off (${last6OffTotal} OT, ~${totalNamesOver6Off} names called through), you're about ${positionsAhead - totalNamesOver6Off} spots past where they'd typically stop. It would take an unusually busy stretch — like a major event or flu season — for them to reach you this cycle.`;
   } else {
     probability = "unlikely";
-    explanation = `Last 6-off had ${last6OffTotal} OT call-ins (~${totalNamesOver6Off} names called). You're ${positionsAhead} away — probably won't reach you.`;
+    explanation = `You're ${positionsAhead} away, and last cycle they only went through roughly ${totalNamesOver6Off} names. That puts you ${positionsAhead - totalNamesOver6Off} spots beyond their reach. Barring something extraordinary, you won't be getting a call this 6-off. Enjoy your days off.`;
   }
 
-  if (stat.near) {
-    explanation += ` Near ${stat.holiday} — typically fewer bookoffs, less OT demand.`;
+  // Add stat holiday context if nearby but not already covered
+  if (stat.near && stat.daysAway > 1 && !explanation.includes(stat.holiday || "")) {
+    explanation += ` Note: ${stat.holiday} is ${stat.daysAway} days away — this typically reduces bookoffs and overtime demand around these dates.`;
   }
 
   const factors: PredictionResult["factors"] = [
