@@ -29,6 +29,14 @@ interface OvertimeData {
   }[];
 }
 
+interface OTWPResult {
+  date: string;
+  dayShiftPlatoon: string;
+  dayShiftCount: number;
+  nightShiftPlatoon: string;
+  nightShiftCount: number;
+}
+
 const PLATOON_COLORS: Record<string, string> = {
   "1": "platoon-1",
   "2": "platoon-2",
@@ -42,12 +50,25 @@ export default function OvertimePage() {
   const [selectedDate, setSelectedDate] = useState(
     () => new Date().toISOString().split("T")[0]
   );
+  const [otwpData, setOtwpData] = useState<OTWPResult[]>([]);
+  const [otwpLoading, setOtwpLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/overtime?date=${selectedDate}`)
       .then((r) => r.json())
-      .then((d) => setData(d))
+      .then((d) => {
+        setData(d);
+        // Trigger OTWP scrape in background
+        setOtwpLoading(true);
+        fetch(`/api/overtime/otwp?date=${selectedDate}`)
+          .then((r) => r.json())
+          .then((otwp) => {
+            if (otwp.results) setOtwpData(otwp.results);
+          })
+          .catch(() => {})
+          .finally(() => setOtwpLoading(false));
+      })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [selectedDate]);
@@ -333,9 +354,22 @@ export default function OvertimePage() {
           {/* Last 6-Off Period */}
           {data.sixOffDetails && data.sixOffDetails.length > 0 && (
             <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-400">
-              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">
-                Last 6-Off — OT Shifts
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
+                  Last 6-Off — OT Shifts
+                </h2>
+                {otwpLoading && (
+                  <div className="flex items-center gap-2">
+                    <svg className="animate-spin h-3 w-3 text-ember" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span className="font-mono text-[9px] text-ember tracking-wider uppercase">
+                      Scraping OTWP...
+                    </span>
+                  </div>
+                )}
+              </div>
               <div className="space-y-1">
                 {data.sixOffDetails.map((day, i) => {
                   const dateObj = new Date(day.date + "T12:00:00");
@@ -345,6 +379,8 @@ export default function OvertimePage() {
                     day: "numeric",
                   });
                   const isToday = day.date === selectedDate;
+
+                  const otwp = otwpData.find((o) => o.date === day.date);
 
                   return (
                     <div
@@ -392,6 +428,13 @@ export default function OvertimePage() {
                             >
                               PLT-{day.dayShiftPlatoon}
                             </span>
+                            {otwp ? (
+                              <span className="font-mono text-[11px] text-ember font-bold ml-1">
+                                {otwp.dayShiftCount}
+                              </span>
+                            ) : otwpLoading ? (
+                              <span className="font-mono text-[9px] text-muted ml-1">...</span>
+                            ) : null}
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-mono text-[9px] text-platoon-3 tracking-wider">NIGHT</span>
@@ -408,6 +451,13 @@ export default function OvertimePage() {
                             >
                               PLT-{day.nightShiftPlatoon}
                             </span>
+                            {otwp ? (
+                              <span className="font-mono text-[11px] text-ember font-bold ml-1">
+                                {otwp.nightShiftCount}
+                              </span>
+                            ) : otwpLoading ? (
+                              <span className="font-mono text-[9px] text-muted ml-1">...</span>
+                            ) : null}
                           </div>
                         </div>
                       )}
@@ -415,8 +465,35 @@ export default function OvertimePage() {
                   );
                 })}
               </div>
+              {otwpData.length > 0 && (
+                <div className="mt-3 p-3 bg-surface-raised border border-border-subtle">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase">
+                      Total OT Call-Ins
+                    </span>
+                    <div className="flex gap-4">
+                      <span className="font-mono text-xs">
+                        <span className="text-amber">Day:</span>{" "}
+                        <span className="text-ember font-bold">
+                          {otwpData.reduce((s, o) => s + o.dayShiftCount, 0)}
+                        </span>
+                      </span>
+                      <span className="font-mono text-xs">
+                        <span className="text-platoon-3">Night:</span>{" "}
+                        <span className="text-ember font-bold">
+                          {otwpData.reduce((s, o) => s + o.nightShiftCount, 0)}
+                        </span>
+                      </span>
+                      <span className="font-mono text-xs text-foreground font-bold">
+                        Total: {otwpData.reduce((s, o) => s + o.dayShiftCount + o.nightShiftCount, 0)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
               <p className="font-mono text-[9px] text-muted tracking-wider mt-3">
                 Days 1 and 6 are not eligible for OT call-in. Middle 4 days are eligible.
+                {otwpData.length > 0 && " OTWP counts show how many OT people were on each shift."}
               </p>
             </div>
           )}
