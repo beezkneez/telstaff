@@ -121,7 +121,22 @@ async function parseRosterPage(
     }[] = [];
 
     const allOrgNames = document.querySelectorAll(".organizationName span.bold");
-    const allCrewNames = document.querySelectorAll("div.displayNameText");
+    const allCrewNames = document.querySelectorAll(".displayNameText");
+
+    // Inject debug info into results for logging
+    (window as any).__parserDebug = {
+      orgCount: allOrgNames.length,
+      crewCount: allCrewNames.length,
+      sampleOrgs: Array.from(allOrgNames).slice(0, 5).map(e => e.textContent?.trim()),
+      sampleCrew: Array.from(allCrewNames).slice(0, 3).map(e => e.textContent?.trim()?.substring(0, 60)),
+      // Check for alternative crew selectors
+      altCounts: {
+        displayNameText: document.querySelectorAll(".displayNameText").length,
+        fixLength: document.querySelectorAll(".fixLength").length,
+        resourceDisplay: document.querySelectorAll(".resourceDisplay").length,
+        positionNameText: document.querySelectorAll(".positionNameText").length,
+      }
+    };
 
     type Marker =
       | { type: "district"; num: number; el: Element }
@@ -233,6 +248,10 @@ async function parseRosterPage(
 
     return results;
   }, platoon);
+
+  // Get debug info from inside evaluate
+  const parserDebug = await page.evaluate(() => (window as any).__parserDebug);
+  console.log("[scraper] Parser debug:", JSON.stringify(parserDebug));
 
   console.log("[scraper] Parsed", stations.length, "stations with",
     stations.reduce((sum, s) => sum + s.trucks.length, 0), "trucks and",
