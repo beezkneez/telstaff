@@ -99,14 +99,44 @@ async function parseRosterPage(
   // Give the roster data time to fully populate
   await page.waitForTimeout(5000);
 
-  // Debug: dump a sample of the page HTML to understand the structure
-  const debugHtml = await page.evaluate(() => {
-    const grid = document.getElementById("tableGrid");
-    if (!grid) return "NO #tableGrid found";
-    // Get first 3000 chars of the grid's HTML
-    return grid.outerHTML.substring(0, 3000);
+  // Debug: dump the actual page structure where station data lives
+  const debugInfo = await page.evaluate(() => {
+    // Find elements containing "Station" text
+    const stationEls = Array.from(document.querySelectorAll('*')).filter(
+      el => el.textContent?.trim().match(/^Station\s+\d+$/) && el.children.length === 0
+    ).slice(0, 3);
+
+    // Get parent chain for the first station element
+    let parentChain = "";
+    if (stationEls[0]) {
+      let el: Element | null = stationEls[0];
+      for (let i = 0; i < 5 && el; i++) {
+        parentChain += `${el.tagName}.${el.className} #${el.id} > `;
+        el = el.parentElement;
+      }
+    }
+
+    // Find "Pump" or crew-related elements
+    const pumpEls = Array.from(document.querySelectorAll('*')).filter(
+      el => el.textContent?.trim().startsWith('Pump ') && el.children.length === 0
+    ).slice(0, 2);
+
+    // Get a chunk of HTML around Station 10 if found
+    const stn10 = Array.from(document.querySelectorAll('*')).find(
+      el => el.textContent?.trim() === 'Station 10' && el.children.length === 0
+    );
+    const stn10Parent = stn10?.closest('tr, div, li, section') || stn10?.parentElement?.parentElement;
+
+    return {
+      stationCount: stationEls.length,
+      stationTexts: stationEls.map(el => ({ tag: el.tagName, class: el.className, text: el.textContent?.trim() })),
+      parentChain,
+      pumpTexts: pumpEls.map(el => ({ tag: el.tagName, class: el.className, text: el.textContent?.trim().substring(0, 80) })),
+      stn10ParentHtml: stn10Parent?.outerHTML?.substring(0, 1500) || "not found",
+      bodyLength: document.body.innerHTML.length,
+    };
   });
-  console.log("[scraper] tableGrid sample HTML:", debugHtml.substring(0, 2000));
+  console.log("[scraper] Page debug:", JSON.stringify(debugInfo, null, 2));
 
   // Expand all collapsed stations by clicking the expand/collapse links
   const expandButtons = await page.$$('a.plainTextLink[aria-label="Expand/collapse"][aria-expanded="false"]');
