@@ -97,7 +97,16 @@ async function parseRosterPage(
     timeout: 30000,
   });
   // Give the roster data time to fully populate
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(5000);
+
+  // Debug: dump a sample of the page HTML to understand the structure
+  const debugHtml = await page.evaluate(() => {
+    const grid = document.getElementById("tableGrid");
+    if (!grid) return "NO #tableGrid found";
+    // Get first 3000 chars of the grid's HTML
+    return grid.outerHTML.substring(0, 3000);
+  });
+  console.log("[scraper] tableGrid sample HTML:", debugHtml.substring(0, 2000));
 
   // Expand all collapsed stations by clicking all + buttons
   const expandButtons = await page.$$('.treeNodeExpand, .expand-icon, [class*="expand"], [class*="collapsed"] > .toggle, img[src*="plus"], .tree-toggle');
