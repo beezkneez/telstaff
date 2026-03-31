@@ -31,7 +31,8 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.profile?.name || user.email,
-        };
+          isAdmin: user.isAdmin,
+        } as { id: string; email: string; name: string; isAdmin: boolean };
       },
     }),
   ],
@@ -42,13 +43,17 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.id = (user as unknown as { id: string }).id;
+        token.isAdmin = (user as unknown as { isAdmin: boolean }).isAdmin;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id: string }).id = token.id as string;
+        (session.user as { id: string; isAdmin: boolean }).id =
+          token.id as string;
+        (session.user as { id: string; isAdmin: boolean }).isAdmin =
+          (token.isAdmin as boolean) || false;
       }
       return session;
     },

@@ -13,6 +13,8 @@ model User {
   passwordHash       String
   telestaff_username String?
   telestaff_password String?  // AES-256 encrypted
+  isAdmin            Boolean  @default(false)
+  useSystemCreds     Boolean  @default(true) // use admin's creds for shared scraping
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   profile            Profile?
@@ -38,6 +40,14 @@ model StaffingCache {
 
   @@unique([date, platoon, station])
   @@index([date, platoon])
+}
+
+model AppSettings {
+  id        String @id @default("singleton")
+  cronTime  String @default("0 5 * * *") // UTC cron expression
+  cronEnabled Boolean @default(true)
+  daysBack  Int    @default(6)
+  daysAhead Int    @default(6)
 }
 
 model OTWPCache {

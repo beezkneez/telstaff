@@ -31,6 +31,9 @@ export default function Navbar() {
               { href: "/dashboard/overtime", label: "OVERTIME" },
               { href: "/dashboard/paybacks", label: "PAYBACKS" },
               { href: "/profile", label: "PROFILE" },
+              ...((session?.user as { isAdmin?: boolean })?.isAdmin
+                ? [{ href: "/dashboard/admin", label: "ADMIN" }]
+                : []),
             ].map((item) => (
               <Link
                 key={item.href}
@@ -78,6 +81,9 @@ export default function Navbar() {
               { href: "/dashboard/overtime", label: "Overtime" },
               { href: "/dashboard/paybacks", label: "Paybacks" },
               { href: "/profile", label: "Profile" },
+              ...((session?.user as { isAdmin?: boolean })?.isAdmin
+                ? [{ href: "/dashboard/admin", label: "Admin" }]
+                : []),
             ].map((item) => (
               <Link
                 key={item.href}

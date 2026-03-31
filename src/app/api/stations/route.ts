@@ -41,25 +41,41 @@ export async function GET(req: Request) {
     console.error("[stations] DB cache read error:", err);
   }
 
-  // Get user credentials
+  // Get credentials — use own or fall back to system (admin) creds
   let username = "";
   let password = "";
 
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { telestaff_username: true, telestaff_password: true },
+      select: {
+        telestaff_username: true,
+        telestaff_password: true,
+        useSystemCreds: true,
+      },
     });
 
-    if (!user?.telestaff_username || !user?.telestaff_password) {
+    if (user?.telestaff_username && user?.telestaff_password) {
+      username = decrypt(user.telestaff_username);
+      password = decrypt(user.telestaff_password);
+    } else if (user?.useSystemCreds) {
+      // Use admin's credentials
+      const admin = await prisma.user.findFirst({
+        where: { isAdmin: true, telestaff_username: { not: null } },
+        select: { telestaff_username: true, telestaff_password: true },
+      });
+      if (admin?.telestaff_username && admin?.telestaff_password) {
+        username = decrypt(admin.telestaff_username);
+        password = decrypt(admin.telestaff_password);
+      }
+    }
+
+    if (!username || !password) {
       return NextResponse.json(
-        { error: "No Telestaff credentials saved. Go to Profile to connect." },
+        { error: "No Telestaff credentials available. Ask admin or add your own in Profile." },
         { status: 400 }
       );
     }
-
-    username = decrypt(user.telestaff_username);
-    password = decrypt(user.telestaff_password);
   } catch (error) {
     console.error("[stations] Error loading credentials:", error);
     return NextResponse.json(
