@@ -67,56 +67,51 @@ export async function scrapePaybacks(
     console.log("[paybacks] Debug:", JSON.stringify(debug));
 
     // Parse the paybacks data
+    // Structure: div.dashboardItemTitle ("Owes Me" / "I Owe")
+    //   followed by sibling div.dashboardItem entries
+    //   each entry has: span.dateRange + span.displayBlock.fontResize (name) + span.displayBlock.fontResize (details)
     const data = await page.evaluate(() => {
       const result: {
         owesMe: { date: string; name: string; details: string }[];
         iOwe: { date: string; name: string; details: string }[];
       } = { owesMe: [], iOwe: [] };
 
-      // Find all dashboard sections by their title
-      const titleElements = document.querySelectorAll(".dashboardItemTitle");
+      // Get all title and item elements in DOM order
+      const allElements = document.querySelectorAll(".dashboardItemTitle, .dashboardItem");
 
-      titleElements.forEach((titleEl) => {
-        const title = titleEl.textContent?.trim().toLowerCase() || "";
+      let currentList: typeof result.owesMe | null = null;
 
-        // Find the parent container that holds the entries
-        const container = titleEl.closest(".dashboardItem, .panel, [class*='dashboard']") || titleEl.parentElement;
-        if (!container) return;
-
-        // Determine which list to add to
-        let targetList: typeof result.owesMe | null = null;
-        if (title.includes("owes me")) {
-          targetList = result.owesMe;
-        } else if (title.includes("i owe")) {
-          targetList = result.iOwe;
-        }
-        if (!targetList) return;
-
-        // Find all entries within this section
-        // Each entry has: span.dateRange, then span.displayBlock.fontResize (name), then span.displayBlock.fontResize (details)
-        const dateSpans = container.querySelectorAll("span.dateRange");
-
-        dateSpans.forEach((dateSpan) => {
-          const date = dateSpan.textContent?.trim() || "";
-
-          // Get sibling displayBlock spans after this dateRange
-          const parent = dateSpan.parentElement;
-          if (!parent) return;
-
-          const displayBlocks = parent.querySelectorAll("span.displayBlock.fontResize");
-          const name = displayBlocks[0]?.textContent?.trim() || "";
-          const details = displayBlocks[1]?.textContent?.trim() || "";
-
-          if (name) {
-            // Clean up the name — extract "LastName, FirstName"
-            const nameClean = name.match(/^([A-Za-z'-]+,\s*[A-Za-z'-]+)/);
-            targetList!.push({
-              date: date.replace("Since ", ""),
-              name: nameClean ? nameClean[1] : name.split(/\d/)[0].trim(),
-              details,
-            });
+      allElements.forEach((el) => {
+        if (el.classList.contains("dashboardItemTitle")) {
+          const title = el.textContent?.trim().toLowerCase() || "";
+          if (title === "owes me") {
+            currentList = result.owesMe;
+          } else if (title === "i owe") {
+            currentList = result.iOwe;
+          } else {
+            currentList = null; // other sections like Vacation, etc
           }
-        });
+          return;
+        }
+
+        // It's a dashboardItem entry
+        if (!currentList) return;
+
+        const dateSpan = el.querySelector("span.dateRange");
+        const displayBlocks = el.querySelectorAll("span.displayBlock.fontResize");
+
+        const date = dateSpan?.textContent?.trim().replace("Since", "").trim() || "";
+        const nameRaw = displayBlocks[0]?.textContent?.trim() || "";
+        const details = displayBlocks[1]?.textContent?.trim() || "";
+
+        if (nameRaw) {
+          const nameClean = nameRaw.match(/^([A-Za-z'-]+,\s*[A-Za-z'-]+)/);
+          currentList.push({
+            date,
+            name: nameClean ? nameClean[1] : nameRaw.split(/\d/)[0].trim(),
+            details,
+          });
+        }
       });
 
       return result;
