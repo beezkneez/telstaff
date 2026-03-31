@@ -51,7 +51,20 @@ export async function scrapePaybacks(
       timeout: 30000,
     });
     await page.waitForTimeout(5000);
-    console.log("[paybacks] Dashboard loaded");
+    console.log("[paybacks] Dashboard loaded, URL:", page.url());
+
+    // Debug: dump dashboard structure
+    const debug = await page.evaluate(() => {
+      const titles = Array.from(document.querySelectorAll(".dashboardItemTitle"))
+        .map(el => el.textContent?.trim());
+      const allClasses = Array.from(document.querySelectorAll("[class*='dashboard']"))
+        .slice(0, 10)
+        .map(el => ({ tag: el.tagName, class: el.className, text: el.textContent?.trim().substring(0, 60) }));
+      const dateRanges = document.querySelectorAll(".dateRange").length;
+      const displayBlocks = document.querySelectorAll(".displayBlock.fontResize").length;
+      return { titles, allClasses, dateRanges, displayBlocks, bodyLen: document.body.innerHTML.length };
+    });
+    console.log("[paybacks] Debug:", JSON.stringify(debug));
 
     // Parse the paybacks data
     const data = await page.evaluate(() => {
