@@ -84,18 +84,21 @@ export default function DashboardPage() {
     if (!platoon) return;
     setLoading(true);
     setError("");
+    setIsMock(false);
 
     try {
       const res = await fetch(`/api/stations?platoon=${platoon}&date=${selectedDate}`);
-      if (!res.ok) throw new Error("Failed to load staffing data");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to load staffing data");
+      }
 
       const data = await res.json();
       const stations: StationStaffing[] = Array.isArray(data) ? data : [data];
       setAllStations(stations);
-      setIsMock(stations[0]?.mock === true);
     } catch (err) {
-      setError("Failed to load data. Using mock data.");
-      setIsMock(true);
+      const msg = err instanceof Error ? err.message : "Failed to load data";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -125,10 +128,10 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider text-muted uppercase">
             <span
-              className={`w-2 h-2 ${isMock ? "bg-amber" : "bg-success"} animate-pulse-ember`}
+              className={`w-2 h-2 ${loading ? "bg-amber" : "bg-success"} animate-pulse-ember`}
             />
-            {isMock
-              ? "Mock data // connect telestaff in profile"
+            {loading
+              ? "Scraping telestaff..."
               : "Live feed // telestaff"}
           </div>
         </div>

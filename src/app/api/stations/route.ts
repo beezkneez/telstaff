@@ -3,10 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
-import {
-  getStationStaffing,
-  getAllStationsForPlatoon,
-} from "@/lib/mock-data";
+import { getCached, setCached, getInProgress, setInProgress } from "@/lib/cache";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -16,12 +13,17 @@ export async function GET(req: Request) {
 
   const userId = (session.user as { id: string }).id;
   const { searchParams } = new URL(req.url);
-  const station = searchParams.get("station");
   const platoon = searchParams.get("platoon") || "1";
-  const date = searchParams.get("date") || undefined;
+  const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
 
-  // Check if user has Telestaff credentials
-  let hasCreds = false;
+  // Check cache first — return immediately if fresh
+  const cached = getCached(platoon, date);
+  if (cached) {
+    console.log("[stations] Cache hit for platoon", platoon, "date", date);
+    return NextResponse.json(cached);
+  }
+
+  // Get user credentials
   let username = "";
   let password = "";
 
@@ -31,50 +33,48 @@ export async function GET(req: Request) {
       select: { telestaff_username: true, telestaff_password: true },
     });
 
-    console.log("[stations] userId:", userId, "hasTelestaff:", !!(user?.telestaff_username));
-
-    if (user?.telestaff_username && user?.telestaff_password) {
-      username = decrypt(user.telestaff_username);
-      password = decrypt(user.telestaff_password);
-      hasCreds = true;
-      console.log("[stations] Credentials decrypted OK, username:", username);
-    }
-  } catch (error) {
-    console.error("[stations] Error loading/decrypting credentials:", error);
-  }
-
-  // Try real scraper if creds available
-  console.log("[stations] hasCreds:", hasCreds, "platoon:", platoon);
-  if (hasCreds) {
-    try {
-      const { scrapeRoster, scrapeStationFromRoster } = await import(
-        "@/lib/scraper"
+    if (!user?.telestaff_username || !user?.telestaff_password) {
+      return NextResponse.json(
+        { error: "No Telestaff credentials saved. Go to Profile to connect." },
+        { status: 400 }
       );
-
-      if (station) {
-        const data = await scrapeStationFromRoster(
-          username,
-          password,
-          parseInt(station),
-          platoon,
-          date
-        );
-        if (data) return NextResponse.json(data);
-      } else {
-        const data = await scrapeRoster(username, password, platoon, date);
-        if (data.length > 0) return NextResponse.json(data);
-      }
-    } catch (error) {
-      console.error("Scraper error, falling back to mock data:", error);
     }
+
+    username = decrypt(user.telestaff_username);
+    password = decrypt(user.telestaff_password);
+  } catch (error) {
+    console.error("[stations] Error loading credentials:", error);
+    return NextResponse.json(
+      { error: "Failed to load credentials" },
+      { status: 500 }
+    );
   }
 
-  // Fallback to mock data
-  if (station) {
-    const data = getStationStaffing(parseInt(station), platoon, date);
-    return NextResponse.json({ ...data, mock: true });
+  // Check if a scrape is already in progress for this platoon+date
+  let scrapePromise = getInProgress(platoon, date);
+
+  if (!scrapePromise) {
+    // Start a new scrape
+    const { scrapeRoster } = await import("@/lib/scraper");
+    scrapePromise = scrapeRoster(username, password, platoon, date)
+      .then((stations) => {
+        setCached(platoon, date, stations);
+        console.log("[stations] Cached", stations.length, "stations for platoon", platoon);
+        return stations;
+      });
+    setInProgress(platoon, date, scrapePromise);
+  } else {
+    console.log("[stations] Joining in-progress scrape for platoon", platoon);
   }
 
-  const data = getAllStationsForPlatoon(platoon, date);
-  return NextResponse.json(data.map((s) => ({ ...s, mock: true })));
+  try {
+    const stations = await scrapePromise;
+    return NextResponse.json(stations);
+  } catch (error) {
+    console.error("[stations] Scraper error:", error);
+    return NextResponse.json(
+      { error: "Failed to load staffing data from Telestaff. Try again." },
+      { status: 500 }
+    );
+  }
 }
