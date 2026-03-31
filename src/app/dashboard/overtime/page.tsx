@@ -41,7 +41,8 @@ interface OvertimeData {
     statHolidayName: string | null;
     dayOfWeek: string;
   } | null;
-  ytdTally: { platoon: string; total: number }[];
+  ytdNeeded: { platoon: string; total: number }[];
+  ytdWorked: { platoon: string; total: number }[];
 }
 
 interface OTWPResult {
@@ -283,33 +284,111 @@ export default function OvertimePage() {
             </div>
           )}
 
-          {/* YTD Tally */}
-          {data.ytdTally && data.ytdTally.some((t) => t.total > 0) && (
+          {/* Last 6-Off Period */}
+          {data.sixOffDetails && data.sixOffDetails.length > 0 && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-200">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
+                  Last 6-Off — OT Shifts
+                </h2>
+                {otwpLoading && (
+                  <div className="flex items-center gap-2">
+                    <svg className="animate-spin h-3 w-3 text-ember" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span className="font-mono text-[9px] text-ember tracking-wider uppercase">Scraping OTWP...</span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1">
+                {data.sixOffDetails.map((day, i) => {
+                  const dateObj = new Date(day.date + "T12:00:00");
+                  const dayLabel = dateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                  const isToday = day.date === selectedDate;
+                  const otwp = otwpData.find((o) => o.date === day.date);
+                  return (
+                    <div key={day.date} className={`flex items-center justify-between px-3 py-2.5 ${isToday ? "bg-ember/10 border-l-2 border-l-ember" : day.eligible ? "bg-surface-raised/50" : "opacity-50"}`}>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] text-muted w-4">{i + 1}</span>
+                        <span className={`font-mono text-xs ${isToday ? "text-ember font-bold" : "text-foreground"}`}>{dayLabel}</span>
+                        {!day.eligible && <span className="font-mono text-[9px] text-muted tracking-wider">NOT ELIGIBLE</span>}
+                        {isToday && <span className="font-mono text-[9px] text-ember tracking-wider uppercase">Today</span>}
+                      </div>
+                      {day.eligible && (
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[9px] text-amber tracking-wider">DAY</span>
+                            <span className="font-mono text-[10px] px-1.5 py-0.5" style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>PLT-{day.dayShiftPlatoon}</span>
+                            {otwp ? <span className="font-mono text-[11px] text-ember font-bold ml-1">{otwp.dayShiftCount}</span> : otwpLoading ? <span className="font-mono text-[9px] text-muted ml-1">...</span> : null}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[9px] text-platoon-3 tracking-wider">NIGHT</span>
+                            <span className="font-mono text-[10px] px-1.5 py-0.5" style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>PLT-{day.nightShiftPlatoon}</span>
+                            {otwp ? <span className="font-mono text-[11px] text-ember font-bold ml-1">{otwp.nightShiftCount}</span> : otwpLoading ? <span className="font-mono text-[9px] text-muted ml-1">...</span> : null}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {otwpData.length > 0 && (
+                <div className="mt-3 p-3 bg-surface-raised border border-border-subtle">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase">Total OT Call-Ins</span>
+                    <div className="flex gap-4">
+                      <span className="font-mono text-xs"><span className="text-amber">Day:</span> <span className="text-ember font-bold">{otwpData.reduce((s, o) => s + o.dayShiftCount, 0)}</span></span>
+                      <span className="font-mono text-xs"><span className="text-platoon-3">Night:</span> <span className="text-ember font-bold">{otwpData.reduce((s, o) => s + o.nightShiftCount, 0)}</span></span>
+                      <span className="font-mono text-xs text-foreground font-bold">Total: {otwpData.reduce((s, o) => s + o.dayShiftCount + o.nightShiftCount, 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <p className="font-mono text-[9px] text-muted tracking-wider mt-3">
+                Days 1 and 6 are not eligible for OT call-in. Middle 4 days are eligible.
+                {otwpData.length > 0 && " OTWP counts show how many OT people were on each shift."}
+              </p>
+            </div>
+          )}
+
+          {/* YTD Tally — Needed + Worked */}
+          {data.ytdNeeded && data.ytdNeeded.some((t) => t.total > 0) && (
             <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-150">
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">
-                YTD Call-In Tally — {new Date().getFullYear()}
+                YTD OT Tally — {new Date().getFullYear()}
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {data.ytdTally.map((t) => (
+
+              {/* Shifts that needed OT */}
+              <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                OT Call-Ins Needed (by on-shift platoon)
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                {data.ytdNeeded.map((t) => (
                   <div key={t.platoon} className="p-3 border border-border-subtle">
                     <div className="flex items-center gap-2 mb-2">
-                      <span
-                        className="w-2.5 h-2.5"
-                        style={{ backgroundColor: `var(--platoon-${t.platoon})` }}
-                      />
-                      <span className="font-mono text-[10px] tracking-wider uppercase">
-                        PLT-{t.platoon}
-                      </span>
+                      <span className="w-2.5 h-2.5" style={{ backgroundColor: `var(--platoon-${t.platoon})` }} />
+                      <span className="font-mono text-[10px] tracking-wider uppercase">PLT-{t.platoon}</span>
                     </div>
-                    <p
-                      className="font-display text-2xl font-bold"
-                      style={{ color: `var(--platoon-${t.platoon})` }}
-                    >
-                      {t.total}
-                    </p>
-                    <p className="font-mono text-[9px] text-muted mt-1">
-                      total OT call-ins
-                    </p>
+                    <p className="font-display text-2xl font-bold" style={{ color: `var(--platoon-${t.platoon})` }}>{t.total}</p>
+                    <p className="font-mono text-[9px] text-muted mt-1">needed on their shifts</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* OT worked by each platoon */}
+              <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                OT Shifts Worked (by off-duty platoon)
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {data.ytdWorked.map((t) => (
+                  <div key={t.platoon} className="p-3 border border-border-subtle">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2.5 h-2.5" style={{ backgroundColor: `var(--platoon-${t.platoon})` }} />
+                      <span className="font-mono text-[10px] tracking-wider uppercase">PLT-{t.platoon}</span>
+                    </div>
+                    <p className="font-display text-2xl font-bold text-ember">{t.total}</p>
+                    <p className="font-mono text-[9px] text-muted mt-1">OT shifts received</p>
                   </div>
                 ))}
               </div>
@@ -492,153 +571,6 @@ export default function OvertimePage() {
                   </p>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Last 6-Off Period */}
-          {data.sixOffDetails && data.sixOffDetails.length > 0 && (
-            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-400">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
-                  Last 6-Off — OT Shifts
-                </h2>
-                {otwpLoading && (
-                  <div className="flex items-center gap-2">
-                    <svg className="animate-spin h-3 w-3 text-ember" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span className="font-mono text-[9px] text-ember tracking-wider uppercase">
-                      Scraping OTWP...
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-1">
-                {data.sixOffDetails.map((day, i) => {
-                  const dateObj = new Date(day.date + "T12:00:00");
-                  const dayLabel = dateObj.toLocaleDateString("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                  });
-                  const isToday = day.date === selectedDate;
-
-                  const otwp = otwpData.find((o) => o.date === day.date);
-
-                  return (
-                    <div
-                      key={day.date}
-                      className={`flex items-center justify-between px-3 py-2.5 ${
-                        isToday
-                          ? "bg-ember/10 border-l-2 border-l-ember"
-                          : day.eligible
-                            ? "bg-surface-raised/50"
-                            : "opacity-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-[10px] text-muted w-4">
-                          {i + 1}
-                        </span>
-                        <span className={`font-mono text-xs ${isToday ? "text-ember font-bold" : "text-foreground"}`}>
-                          {dayLabel}
-                        </span>
-                        {!day.eligible && (
-                          <span className="font-mono text-[9px] text-muted tracking-wider">
-                            NOT ELIGIBLE
-                          </span>
-                        )}
-                        {isToday && (
-                          <span className="font-mono text-[9px] text-ember tracking-wider uppercase">
-                            Today
-                          </span>
-                        )}
-                      </div>
-                      {day.eligible && (
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-[9px] text-amber tracking-wider">DAY</span>
-                            <span
-                              className="font-mono text-[10px] px-1.5 py-0.5"
-                              style={{
-                                backgroundColor: day.dayShiftPlatoon
-                                  ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)`
-                                  : undefined,
-                                color: day.dayShiftPlatoon
-                                  ? `var(--platoon-${day.dayShiftPlatoon})`
-                                  : undefined,
-                              }}
-                            >
-                              PLT-{day.dayShiftPlatoon}
-                            </span>
-                            {otwp ? (
-                              <span className="font-mono text-[11px] text-ember font-bold ml-1">
-                                {otwp.dayShiftCount}
-                              </span>
-                            ) : otwpLoading ? (
-                              <span className="font-mono text-[9px] text-muted ml-1">...</span>
-                            ) : null}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-[9px] text-platoon-3 tracking-wider">NIGHT</span>
-                            <span
-                              className="font-mono text-[10px] px-1.5 py-0.5"
-                              style={{
-                                backgroundColor: day.nightShiftPlatoon
-                                  ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)`
-                                  : undefined,
-                                color: day.nightShiftPlatoon
-                                  ? `var(--platoon-${day.nightShiftPlatoon})`
-                                  : undefined,
-                              }}
-                            >
-                              PLT-{day.nightShiftPlatoon}
-                            </span>
-                            {otwp ? (
-                              <span className="font-mono text-[11px] text-ember font-bold ml-1">
-                                {otwp.nightShiftCount}
-                              </span>
-                            ) : otwpLoading ? (
-                              <span className="font-mono text-[9px] text-muted ml-1">...</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              {otwpData.length > 0 && (
-                <div className="mt-3 p-3 bg-surface-raised border border-border-subtle">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase">
-                      Total OT Call-Ins
-                    </span>
-                    <div className="flex gap-4">
-                      <span className="font-mono text-xs">
-                        <span className="text-amber">Day:</span>{" "}
-                        <span className="text-ember font-bold">
-                          {otwpData.reduce((s, o) => s + o.dayShiftCount, 0)}
-                        </span>
-                      </span>
-                      <span className="font-mono text-xs">
-                        <span className="text-platoon-3">Night:</span>{" "}
-                        <span className="text-ember font-bold">
-                          {otwpData.reduce((s, o) => s + o.nightShiftCount, 0)}
-                        </span>
-                      </span>
-                      <span className="font-mono text-xs text-foreground font-bold">
-                        Total: {otwpData.reduce((s, o) => s + o.dayShiftCount + o.nightShiftCount, 0)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <p className="font-mono text-[9px] text-muted tracking-wider mt-3">
-                Days 1 and 6 are not eligible for OT call-in. Middle 4 days are eligible.
-                {otwpData.length > 0 && " OTWP counts show how many OT people were on each shift."}
-              </p>
             </div>
           )}
 

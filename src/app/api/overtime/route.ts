@@ -123,20 +123,45 @@ export async function GET(req: Request) {
     );
   }
 
-  // YTD OTWP tally per platoon
+  // YTD tallies
   const yearStart = new Date(`${new Date().getFullYear()}-01-01T00:00:00Z`);
-  let ytdTally: { platoon: string; total: number }[] = [];
+  let ytdNeeded: { platoon: string; total: number }[] = [];
+  let ytdWorked: { platoon: string; total: number }[] = [];
   try {
     const ytdData = await prisma.oTWPCache.findMany({
       where: { date: { gte: yearStart } },
     });
-    const tallyMap: Record<string, number> = {};
+
+    // "Needed" — how many OT call-ins each on-shift platoon required
+    const neededMap: Record<string, number> = {};
     for (const entry of ytdData) {
-      tallyMap[entry.platoon] = (tallyMap[entry.platoon] || 0) + entry.count;
+      neededMap[entry.platoon] = (neededMap[entry.platoon] || 0) + entry.count;
     }
-    ytdTally = ["1", "2", "3", "4"].map((p) => ({
+    ytdNeeded = ["1", "2", "3", "4"].map((p) => ({
       platoon: p,
-      total: tallyMap[p] || 0,
+      total: neededMap[p] || 0,
+    }));
+
+    // "Worked" — how many OT shifts each platoon's members received
+    // For each OTWP entry, figure out which platoons were eligible and attribute call-ins
+    const workedMap: Record<string, number> = {};
+    for (const entry of ytdData) {
+      if (entry.count === 0) continue;
+      const dateStr = entry.date.toISOString().split("T")[0];
+      // Find which platoons are in their eligible 6-off period on this date
+      const eligiblePlatoons = ["1", "2", "3", "4"].filter((p) =>
+        canBeCalledIn(dateStr, p)
+      );
+      if (eligiblePlatoons.length === 0) continue;
+      // Split call-ins evenly among eligible platoons
+      const perPlatoon = entry.count / eligiblePlatoons.length;
+      for (const p of eligiblePlatoons) {
+        workedMap[p] = (workedMap[p] || 0) + perPlatoon;
+      }
+    }
+    ytdWorked = ["1", "2", "3", "4"].map((p) => ({
+      platoon: p,
+      total: Math.round(workedMap[p] || 0),
     }));
   } catch (err) {
     console.error("[overtime] YTD tally error:", err);
@@ -153,6 +178,7 @@ export async function GET(req: Request) {
     callInData,
     sixOffDetails,
     prediction,
-    ytdTally,
+    ytdNeeded,
+    ytdWorked,
   });
 }
