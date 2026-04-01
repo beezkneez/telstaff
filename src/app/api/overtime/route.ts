@@ -176,6 +176,15 @@ export async function GET(req: Request) {
       console.error("[overtime] Historical calc error:", err);
     }
 
+    // Get yesterday's actual call-in history for ratio
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    const yesterdayHistory = await prisma.callInHistory.findMany({
+      where: { date: new Date(yesterday + "T00:00:00Z") },
+    });
+    const yesterdayRatio = yesterdayHistory.length > 0
+      ? yesterdayHistory.reduce((s, h) => s + (h.ratio || 0), 0) / yesterdayHistory.length
+      : undefined;
+
     prediction = predictOvertime({
       positionsAhead: callInData.positionsAhead,
       last6OffTotal,
@@ -184,6 +193,7 @@ export async function GET(req: Request) {
       date,
       historicalAvgPerShift,
       recentTrend,
+      yesterdayRatio,
     });
   }
 

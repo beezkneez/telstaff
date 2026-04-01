@@ -112,6 +112,7 @@ export interface PredictionInput {
   date: string;
   historicalAvgPerShift?: number;
   recentTrend?: "rising" | "stable" | "falling";
+  yesterdayRatio?: number; // actual names-dialed/spots-filled from yesterday
 }
 
 export interface Scenario {
@@ -145,7 +146,7 @@ export interface PredictionResult {
 }
 
 export function predictOvertime(input: PredictionInput): PredictionResult {
-  const { positionsAhead, last6OffTotal, todayOtwp, todayHoles, date, historicalAvgPerShift, recentTrend } = input;
+  const { positionsAhead, last6OffTotal, todayOtwp, todayHoles, date, historicalAvgPerShift, recentTrend, yesterdayRatio } = input;
   const d = new Date(date + "T12:00:00");
   const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
   const stat = isNearStatHoliday(date);
@@ -245,6 +246,23 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     explanation = `You're ${positionsAhead} away, and last cycle they'd only need to dial through roughly ${totalNamesOver6Off} names to fill ${last6OffTotal} OT spots. That puts you ${positionsAhead - totalNamesOver6Off} spots beyond their reach. Barring something extraordinary, you won't be getting a call this 6-off. Enjoy your days off.`;
   }
 
+  // Add tonight's specific data
+  if (todayHoles !== null && todayHoles > 0) {
+    explanation += ` Tonight there are ${todayHoles} holes to fill on the shift.`;
+    if (yesterdayRatio) {
+      explanation += ` Yesterday's actual call-through was ${yesterdayRatio.toFixed(1)}:1 (they dialed ${yesterdayRatio.toFixed(1)} names per spot filled).`;
+      const estimatedNames = Math.ceil(todayHoles * yesterdayRatio);
+      explanation += ` At that same rate tonight, they'd dial about ${estimatedNames} names.`;
+      if (positionsAhead < estimatedNames) {
+        explanation += ` You're ${positionsAhead} away — that reaches you.`;
+      } else {
+        explanation += ` You're ${positionsAhead} away — that falls ${positionsAhead - estimatedNames} short of reaching you.`;
+      }
+    }
+  } else if (todayHoles === 0) {
+    explanation += ` The shift is fully staffed tonight — no holes, no call-ins expected.`;
+  }
+
   // Add stat holiday context if nearby but not already covered
   if (stat.near && stat.daysAway > 1 && !explanation.includes(stat.holiday || "")) {
     explanation += ` Note: ${stat.holiday} is ${stat.daysAway} days away — this typically reduces bookoffs and overtime demand around these dates.`;
@@ -289,6 +307,7 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     { name: "Final ratio", value: `${callThroughRatio}:1`, impact: "Base × dynamic" },
     { name: "Day of week", value: dayOfWeek, impact: baseLabel },
     { name: "Today's holes", value: todayHoles !== null ? String(todayHoles) : "N/A", impact: "Actual vacancies from roster" },
+    { name: "Yesterday's ratio", value: yesterdayRatio ? `${yesterdayRatio.toFixed(1)}:1` : "N/A", impact: "Actual names dialed per spot yesterday" },
     { name: "Near stat holiday", value: stat.near ? `${stat.holiday} (${stat.daysAway}d)` : "No", impact: stat.near ? "Reduces demand" : "Normal demand" },
     { name: "Historical avg/shift", value: historicalAvgPerShift ? String(Math.round(historicalAvgPerShift * 10) / 10) : "N/A", impact: "3-month average" },
     { name: "Trend", value: recentTrend || "Unknown", impact: recentTrend === "rising" ? "+10% ratio" : recentTrend === "falling" ? "-10% ratio" : "No change" },

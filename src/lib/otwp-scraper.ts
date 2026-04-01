@@ -43,7 +43,7 @@ async function scrapeOTWPForPlatoonDate(
   platoon: string,
   date: string,
   isFirstLoad: boolean
-): Promise<number> {
+): Promise<{ count: number; names: string[] }> {
   const viewId = PLATOON_ROSTER_VIEW_IDS[platoon];
   console.log(`[otwp] Scraping PLT-${platoon} on ${date}...`);
 
@@ -86,23 +86,26 @@ async function scrapeOTWPForPlatoonDate(
   await searchInput.fill("OTWP");
   await page.waitForTimeout(3000);
 
-  // Count the OTWP results
-  const count = await page.locator("a.nameSingleEditLink").count();
+  // Count and collect the OTWP names
+  const names = await page.locator("a.nameSingleEditLink").allTextContents();
+  const count = names.length;
   console.log(`[otwp] PLT-${platoon} on ${date}: ${count} OTWP`);
 
   // Close the people panel / clear search for next iteration
   await searchInput.fill("");
   await page.waitForTimeout(500);
 
-  return count;
+  return { count, names: names.map((n) => n.trim()) };
 }
 
 export interface OTWPResult {
   date: string;
   dayShiftPlatoon: string;
   dayShiftCount: number;
+  dayShiftNames: string[];
   nightShiftPlatoon: string;
   nightShiftCount: number;
+  nightShiftNames: string[];
 }
 
 export async function scrapeOTWPForDates(
@@ -120,11 +123,11 @@ export async function scrapeOTWPForDates(
 
     let isFirst = true;
     for (const entry of dates) {
-      let dayCount = 0;
-      let nightCount = 0;
+      let dayResult = { count: 0, names: [] as string[] };
+      let nightResult = { count: 0, names: [] as string[] };
 
       try {
-        dayCount = await scrapeOTWPForPlatoonDate(
+        dayResult = await scrapeOTWPForPlatoonDate(
           page, entry.dayShiftPlatoon, entry.date, isFirst
         );
         isFirst = false;
@@ -133,7 +136,7 @@ export async function scrapeOTWPForDates(
       }
 
       try {
-        nightCount = await scrapeOTWPForPlatoonDate(
+        nightResult = await scrapeOTWPForPlatoonDate(
           page, entry.nightShiftPlatoon, entry.date, false
         );
       } catch (err) {
@@ -143,10 +146,32 @@ export async function scrapeOTWPForDates(
       results.push({
         date: entry.date,
         dayShiftPlatoon: entry.dayShiftPlatoon,
-        dayShiftCount: dayCount,
+        dayShiftCount: dayResult.count,
+        dayShiftNames: dayResult.names,
         nightShiftPlatoon: entry.nightShiftPlatoon,
-        nightShiftCount: nightCount,
+        nightShiftCount: nightResult.count,
+        nightShiftNames: nightResult.names,
       });
+
+      // Update call-in DB with OTWP names
+      try {
+        const { updateFromOTWP } = await import("./callin-db");
+        const { canBeCalledIn } = await import("./rotation");
+        // Figure out which platoons were eligible and got called in
+        for (const plt of ["1", "2", "3", "4"]) {
+          if (!canBeCalledIn(entry.date, plt)) continue;
+          // Day shift OTWP — these off-duty people worked on the day shift platoon
+          if (dayResult.names.length > 0) {
+            await updateFromOTWP(plt, dayResult.names, entry.date, "day").catch(() => {});
+          }
+          // Night shift OTWP
+          if (nightResult.names.length > 0) {
+            await updateFromOTWP(plt, nightResult.names, entry.date, "night").catch(() => {});
+          }
+        }
+      } catch (err) {
+        console.error(`[otwp] Failed to update call-in DB:`, err);
+      }
     }
   } finally {
     await context.close();
