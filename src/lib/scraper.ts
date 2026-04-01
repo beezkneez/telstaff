@@ -182,19 +182,14 @@ async function parseRosterPage(
         parent = parent.parentElement;
       }
 
-      // Look for status text — check for elements with status codes near the crew row
-      // Status might be in a sibling or nearby element with specific text patterns
+      // Find status from span.exceptionCode near the crew member
       let statusParent = el.parentElement;
       for (let i = 0; i < 6 && statusParent; i++) {
-        // Look for text matching status patterns
-        const allText = statusParent.querySelectorAll("span, div");
-        allText.forEach((span) => {
-          const t = span.textContent?.trim() || "";
-          if (!status && /^(\.?TNW|\.?TW|\.?Vac|REG|LieuO|LieuE|OTWP|Rel Supp|\.?Sick)/i.test(t)) {
-            status = t;
-          }
-        });
-        if (status) break;
+        const exceptionEl = statusParent.querySelector("span.exceptionCode");
+        if (exceptionEl) {
+          status = exceptionEl.textContent?.trim() || "";
+          break;
+        }
         statusParent = statusParent.parentElement;
       }
 
