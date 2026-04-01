@@ -29,6 +29,7 @@ export default function Navbar() {
             {[
               { href: "/dashboard", label: "OPS" },
               { href: "/dashboard/overtime", label: "OVERTIME" },
+              { href: "/dashboard/overtime/analytics", label: "ANALYTICS" },
               { href: "/dashboard/calendar", label: "CALENDAR" },
               { href: "/dashboard/paybacks", label: "PAYBACKS" },
               { href: "/profile", label: "PROFILE" },
@@ -80,6 +81,7 @@ export default function Navbar() {
             {[
               { href: "/dashboard", label: "Operations" },
               { href: "/dashboard/overtime", label: "Overtime" },
+              { href: "/dashboard/overtime/analytics", label: "Analytics" },
               { href: "/dashboard/calendar", label: "Calendar" },
               { href: "/dashboard/paybacks", label: "Paybacks" },
               { href: "/profile", label: "Profile" },
