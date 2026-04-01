@@ -287,16 +287,27 @@ export async function GET(req: Request) {
     console.error("[overtime] Shortfall calc error:", err);
   }
 
-  // Update prediction with actual holes data now that shortfalls are calculated
+  // Update prediction with TONIGHT'S holes only (not all days summed)
   if (prediction && shortfalls.length > 0 && callInData?.positionsAhead !== null) {
-    const allHoles = shortfalls.reduce((s, sf) => s + sf.ffHoles, 0);
-    if (allHoles > 0) {
+    // Find the next upcoming shift's holes (today or tomorrow)
+    const todayStr = new Date().toISOString().split("T")[0];
+    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+    const upcomingShift = shortfalls.find((sf) =>
+      sf.date === todayStr || sf.date === tomorrowStr
+    );
+    const tonightHoles = upcomingShift ? upcomingShift.ffHoles :
+      (shortfalls.length > 0 ? shortfalls[0].ffHoles : 0);
+
+    if (tonightHoles > 0) {
       prediction = predictOvertime({
         positionsAhead: callInData!.positionsAhead!,
         last6OffTotal: prediction.last6OffTotal,
         todayOtwp: prediction.todayOtwp,
-        todayHoles: allHoles,
+        todayHoles: tonightHoles,
         date,
+        yesterdayRatio: prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value !== "N/A"
+          ? parseFloat(prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value || "0")
+          : undefined,
       });
     }
   }
