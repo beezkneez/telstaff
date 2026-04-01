@@ -449,24 +449,35 @@ export default function DashboardPage() {
       {!loading && viewMode === "all-stations" && allStations.length > 0 && (
         <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-px animate-fade-slide-up delay-300">
           {(() => {
-            const isOff = (t: { type: string; truck: string }) =>
+            const isOffTruck = (t: { type: string; truck: string }) =>
               t.type === "OffRoster" || /^ff\s*\d/i.test(t.truck);
+            const isOffStatus = (status: string) => {
+              const st = status?.toLowerCase().trim() || "";
+              if (st === "tw" || st === "twu") return false;
+              return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa");
+            };
+            // Count ops crew on active trucks excluding off-roster statuses
+            let onRoster = 0;
+            for (const s of regularStations) {
+              for (const t of s.trucks) {
+                if (isOffTruck(t)) {
+                  // TW/TWU on FF trucks count as on roster
+                  onRoster += t.crew.filter((c) => {
+                    const st = c.status?.toLowerCase().trim() || "";
+                    return st === "tw" || st === "twu";
+                  }).length;
+                } else {
+                  onRoster += t.crew.filter((c) => !isOffStatus(c.status || "")).length;
+                }
+              }
+            }
             const activeUnits = regularStations.reduce(
-              (sum, s) => sum + s.trucks.filter((t) => !isOff(t)).length, 0
+              (sum, s) => sum + s.trucks.filter((t) => !isOffTruck(t)).length, 0
             );
-            const activeCrew = regularStations.reduce(
-              (sum, s) => sum + s.trucks.filter((t) => !isOff(t)).reduce((t, u) => t + u.crew.length, 0), 0
-            );
-            const offRosterCrew = regularStations.reduce(
-              (sum, s) => sum + s.trucks.filter((t) => isOff(t)).reduce((t, u) => t + u.crew.length, 0), 0
-            );
-            const supportCrew = supportGroups.reduce((s, g) => s + g.members.length, 0);
-            const totalCrew = activeCrew + offRosterCrew + supportCrew;
-            const offRoster = totalCrew - activeCrew;
             return [
             {
               value: allStations.length,
-              label: "Stations Active",
+              label: "Stations",
               color: "text-ember",
             },
             {
@@ -475,9 +486,9 @@ export default function DashboardPage() {
               color: "text-foreground",
             },
             {
-              value: `${activeCrew + supportCrew}/${totalCrew}`,
-              label: `Staffed / Total${offRosterCrew > 0 ? ` (${offRosterCrew} off roster)` : ""}`,
-              color: "text-foreground",
+              value: `${onRoster}/213`,
+              label: "On Roster / Min Staffing (Ops)",
+              color: onRoster >= 213 ? "text-success" : onRoster >= 200 ? "text-amber" : "text-ember",
             },
             {
               value: `PLT-${platoon}`,
@@ -506,6 +517,11 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+      )}
+      {!loading && viewMode === "all-stations" && allStations.length > 0 && (
+        <p className="mt-2 font-mono text-[9px] text-muted tracking-wider">
+          Ops only — excludes support staff (Investigations, Dispatch). Min staffing 213.
+        </p>
       )}
     </div>
   );
