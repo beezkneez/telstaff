@@ -45,12 +45,13 @@ model StaffingCache {
 }
 
 model AppSettings {
-  id          String  @id @default("singleton")
-  cronTime1   String  @default("0 13 * * *") // 7 AM MT = 13:00 UTC
-  cronTime2   String  @default("0 23 * * *") // 5 PM MT = 23:00 UTC
-  cronEnabled Boolean @default(true)
-  daysBack    Int     @default(6)
-  daysAhead   Int     @default(6)
+  id            String  @id @default("singleton")
+  cronTime1     String  @default("0 13 * * *") // 7 AM MT = 13:00 UTC
+  cronTime2     String  @default("0 23 * * *") // 5 PM MT = 23:00 UTC
+  cronEnabled   Boolean @default(true)
+  daysBack      Int     @default(6)
+  daysAhead     Int     @default(10)
+  minStaffing   Int     @default(216)
 }
 
 model OTWPCache {

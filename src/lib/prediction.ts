@@ -70,8 +70,8 @@ export const STATION_OVERRIDES: Record<string, Record<string, number>> = {
   "21": { Rescue: 5 },
 };
 
-// Minimum staffing target for the department
-export const MIN_STAFFING = 213;
+// Default minimum staffing (overridden by AppSettings.minStaffing)
+export const DEFAULT_MIN_STAFFING = 216;
 
 // Day-of-week call-through multiplier
 // How many names they need to call to fill N slots

@@ -62,6 +62,15 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [minStaffing, setMinStaffing] = useState(216);
+
+  // Load min staffing setting
+  useEffect(() => {
+    fetch("/api/admin?action=settings")
+      .then((r) => r.json())
+      .then((d) => { if (d.minStaffing) setMinStaffing(d.minStaffing); })
+      .catch(() => {});
+  }, []);
 
   // Load user's home platoon and station
   useEffect(() => {
@@ -502,9 +511,9 @@ export default function DashboardPage() {
               color: "text-foreground",
             },
             {
-              value: `${onRoster}/213`,
+              value: `${onRoster}/${minStaffing}`,
               label: "On Roster / Min Staffing (Ops)",
-              color: onRoster >= 213 ? "text-success" : onRoster >= 200 ? "text-amber" : "text-ember",
+              color: onRoster >= minStaffing ? "text-success" : onRoster >= minStaffing - 16 ? "text-amber" : "text-ember",
             },
             {
               value: `PLT-${platoon}`,
@@ -536,7 +545,7 @@ export default function DashboardPage() {
       )}
       {!loading && viewMode === "all-stations" && allStations.length > 0 && (
         <p className="mt-2 font-mono text-[9px] text-muted tracking-wider">
-          Ops only — excludes support staff (Investigations, Dispatch). Min staffing 213.
+          Ops only — excludes support staff (Investigations, Dispatch). Min staffing {minStaffing}.
         </p>
       )}
     </div>

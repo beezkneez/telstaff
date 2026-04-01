@@ -18,6 +18,7 @@ interface Settings {
   cronEnabled: boolean;
   daysBack: number;
   daysAhead: number;
+  minStaffing: number;
 }
 
 interface CacheStats {
@@ -236,7 +237,18 @@ export default function AdminPage() {
                 <input
                   type="number"
                   value={settings.daysAhead}
-                  onChange={(e) => setSettings({ ...settings, daysAhead: parseInt(e.target.value) || 6 })}
+                  onChange={(e) => setSettings({ ...settings, daysAhead: parseInt(e.target.value) || 10 })}
+                  className="w-full px-3 py-2 bg-background border border-border font-mono text-xs text-foreground"
+                />
+              </div>
+              <div>
+                <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                  Min Staffing
+                </label>
+                <input
+                  type="number"
+                  value={settings.minStaffing}
+                  onChange={(e) => setSettings({ ...settings, minStaffing: parseInt(e.target.value) || 216 })}
                   className="w-full px-3 py-2 bg-background border border-border font-mono text-xs text-foreground"
                 />
               </div>

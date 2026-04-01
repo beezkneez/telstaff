@@ -17,12 +17,21 @@ export async function GET(req: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = (session.user as { id: string }).id;
+  const { searchParams } = new URL(req.url);
+  const action = searchParams.get("action");
+
+  // Settings is readable by any authenticated user (for minStaffing etc)
+  if (action === "settings") {
+    let settings = await prisma.appSettings.findUnique({ where: { id: "singleton" } });
+    if (!settings) {
+      settings = await prisma.appSettings.create({ data: { id: "singleton" } });
+    }
+    return NextResponse.json(settings);
+  }
+
   if (!(await isAdmin(userId))) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
-
-  const { searchParams } = new URL(req.url);
-  const action = searchParams.get("action");
 
   if (action === "users") {
     const users = await prisma.user.findMany({
@@ -44,16 +53,6 @@ export async function GET(req: Request) {
         telestaff_username: undefined,
       }))
     );
-  }
-
-  if (action === "settings") {
-    let settings = await prisma.appSettings.findUnique({ where: { id: "singleton" } });
-    if (!settings) {
-      settings = await prisma.appSettings.create({
-        data: { id: "singleton" },
-      });
-    }
-    return NextResponse.json(settings);
   }
 
   if (action === "cache-stats") {
@@ -93,6 +92,7 @@ export async function PUT(req: Request) {
         cronEnabled: body.cronEnabled,
         daysBack: body.daysBack,
         daysAhead: body.daysAhead,
+        minStaffing: body.minStaffing,
       },
       create: {
         id: "singleton",
@@ -101,6 +101,7 @@ export async function PUT(req: Request) {
         cronEnabled: body.cronEnabled,
         daysBack: body.daysBack,
         daysAhead: body.daysAhead,
+        minStaffing: body.minStaffing,
       },
     });
     return NextResponse.json(settings);
