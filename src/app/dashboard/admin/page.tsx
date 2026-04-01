@@ -110,6 +110,16 @@ export default function AdminPage() {
     showMessage("Scrape triggered — check logs");
   }
 
+  async function enrichCallInList() {
+    const res = await fetch("/api/admin/callin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "enrich-roster" }),
+    });
+    const data = await res.json();
+    showMessage(`Updated ${data.updated} members with first names. ${data.notFound?.length || 0} not found in roster.`);
+  }
+
   async function importCallInList() {
     if (!confirm("Import call-in list from Google Sheet? This will set up the database.")) return;
     const res = await fetch("/api/admin/callin", {
@@ -280,6 +290,12 @@ export default function AdminPage() {
                   className="px-3 py-1.5 bg-success/20 border border-success/30 text-success font-mono text-[10px] tracking-wider uppercase hover:bg-success/30 transition-all"
                 >
                   Import Call-In List
+                </button>
+                <button
+                  onClick={enrichCallInList}
+                  className="px-3 py-1.5 bg-platoon-3/20 border border-platoon-3/30 text-platoon-3 font-mono text-[10px] tracking-wider uppercase hover:bg-platoon-3/30 transition-all"
+                >
+                  Add First Names
                 </button>
                 <button
                   onClick={backfillYTD}

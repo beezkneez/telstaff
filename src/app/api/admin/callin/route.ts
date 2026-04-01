@@ -72,6 +72,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   }
 
+  if (body.action === "enrich-roster") {
+    const { enrichFromRoster } = await import("@/lib/callin-enrich");
+    const result = await enrichFromRoster();
+    return NextResponse.json(result);
+  }
+
   if (body.action === "add-member") {
     const { addNewHire } = await import("@/lib/callin-db");
     await addNewHire(body.platoon, body.lastName, body.firstName, body.payrollNumber);
