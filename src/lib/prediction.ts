@@ -106,11 +106,21 @@ export function getCallThroughRate(date: string): { ratio: number; label: string
 
 export interface PredictionInput {
   positionsAhead: number;
-  last6OffTotal: number; // total OTWP across user's last 6-off (all 4 eligible days)
-  todayOtwp: number | null; // today's OTWP count if available
+  last6OffTotal: number;
+  todayOtwp: number | null;
+  todayHoles: number | null; // actual holes from roster shortfall
   date: string;
-  historicalAvgPerShift?: number; // average OTWP per shift over last 3 months
-  recentTrend?: "rising" | "stable" | "falling"; // trend direction
+  historicalAvgPerShift?: number;
+  recentTrend?: "rising" | "stable" | "falling";
+}
+
+export interface Scenario {
+  label: string;
+  acceptRate: string; // "1 in 3"
+  namesCalledPerShift: number;
+  namesCalledOver6Off: number;
+  getsCalled: boolean;
+  margin: number; // positive = called, negative = missed
 }
 
 export interface PredictionResult {
@@ -126,7 +136,7 @@ export interface PredictionResult {
   nearStatHoliday: boolean;
   statHolidayName: string | null;
   dayOfWeek: string;
-  // Raw factors for admin visibility
+  scenarios: Scenario[];
   factors: {
     name: string;
     value: string;
@@ -135,7 +145,7 @@ export interface PredictionResult {
 }
 
 export function predictOvertime(input: PredictionInput): PredictionResult {
-  const { positionsAhead, last6OffTotal, todayOtwp, date, historicalAvgPerShift, recentTrend } = input;
+  const { positionsAhead, last6OffTotal, todayOtwp, todayHoles, date, historicalAvgPerShift, recentTrend } = input;
   const d = new Date(date + "T12:00:00");
   const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
   const stat = isNearStatHoliday(date);
@@ -240,6 +250,32 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     explanation += ` Note: ${stat.holiday} is ${stat.daysAway} days away — this typically reduces bookoffs and overtime demand around these dates.`;
   }
 
+  // Build scenarios at different acceptance rates
+  const holesPerShift = todayHoles !== null ? todayHoles : (last6OffTotal > 0 ? Math.round(last6OffTotal / 8) : 8);
+  const scenarioRates = [
+    { label: "High acceptance", rate: "1 in 2", ratio: 2 },
+    { label: "Good acceptance (weekday)", rate: "1 in 3", ratio: 3 },
+    { label: "Average", rate: "1 in 4", ratio: 4 },
+    { label: "Low acceptance (weekend)", rate: "1 in 5", ratio: 5 },
+    { label: "Very low (Friday night)", rate: "1 in 6", ratio: 6 },
+    { label: "Terrible (long weekend)", rate: "1 in 7", ratio: 7 },
+  ];
+
+  const scenarios: Scenario[] = scenarioRates.map((sr) => {
+    const namesPerShift = holesPerShift * sr.ratio;
+    // Over a 6-off: 4 eligible days × 2 shifts = 8 shift periods
+    const namesOver6Off = last6OffTotal > 0 ? last6OffTotal * sr.ratio : namesPerShift * 8;
+    const margin = namesOver6Off - positionsAhead;
+    return {
+      label: sr.label,
+      acceptRate: sr.rate,
+      namesCalledPerShift: namesPerShift,
+      namesCalledOver6Off: namesOver6Off,
+      getsCalled: margin > 0,
+      margin,
+    };
+  });
+
   const factors: PredictionResult["factors"] = [
     { name: "Your position ahead", value: String(positionsAhead), impact: "How far you are from the start" },
     { name: "Last 6-off OTWP total", value: String(last6OffTotal), impact: "Actual OT people last cycle" },
@@ -251,6 +287,7 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     { name: "Dynamic adjust", value: `×${dynamicMultiplier}`, impact: dynamicNote || "No adjustment" },
     { name: "Final ratio", value: `${callThroughRatio}:1`, impact: "Base × dynamic" },
     { name: "Day of week", value: dayOfWeek, impact: baseLabel },
+    { name: "Today's holes", value: todayHoles !== null ? String(todayHoles) : "N/A", impact: "Actual vacancies from roster" },
     { name: "Near stat holiday", value: stat.near ? `${stat.holiday} (${stat.daysAway}d)` : "No", impact: stat.near ? "Reduces demand" : "Normal demand" },
     { name: "Historical avg/shift", value: historicalAvgPerShift ? String(Math.round(historicalAvgPerShift * 10) / 10) : "N/A", impact: "3-month average" },
     { name: "Trend", value: recentTrend || "Unknown", impact: recentTrend === "rising" ? "+10% ratio" : recentTrend === "falling" ? "-10% ratio" : "No change" },
@@ -269,6 +306,7 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     nearStatHoliday: stat.near,
     statHolidayName: stat.holiday,
     dayOfWeek,
+    scenarios,
     factors,
   };
 }

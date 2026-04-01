@@ -161,6 +161,7 @@ export async function GET(req: Request) {
       positionsAhead: callInData.positionsAhead,
       last6OffTotal,
       todayOtwp,
+      todayHoles: null, // will be updated after shortfalls are calculated
       date,
       historicalAvgPerShift,
       recentTrend,
@@ -255,6 +256,20 @@ export async function GET(req: Request) {
     }
   } catch (err) {
     console.error("[overtime] Shortfall calc error:", err);
+  }
+
+  // Update prediction with actual holes data now that shortfalls are calculated
+  if (prediction && shortfalls.length > 0 && callInData?.positionsAhead !== null) {
+    const allHoles = shortfalls.reduce((s, sf) => s + sf.ffHoles, 0);
+    if (allHoles > 0) {
+      prediction = predictOvertime({
+        positionsAhead: callInData!.positionsAhead!,
+        last6OffTotal: prediction.last6OffTotal,
+        todayOtwp: prediction.todayOtwp,
+        todayHoles: allHoles,
+        date,
+      });
+    }
   }
 
   return NextResponse.json({

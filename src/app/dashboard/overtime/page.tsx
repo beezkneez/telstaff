@@ -39,6 +39,7 @@ interface OvertimeData {
     nearStatHoliday: boolean;
     statHolidayName: string | null;
     dayOfWeek: string;
+    scenarios: { label: string; acceptRate: string; namesCalledPerShift: number; namesCalledOver6Off: number; getsCalled: boolean; margin: number }[];
     factors: { name: string; value: string; impact: string }[];
   } | null;
   shortfalls: {
@@ -179,6 +180,55 @@ export default function OvertimePage() {
                 </div>
               </div>
               <p className="font-mono text-sm text-foreground leading-relaxed">{data.prediction.explanation}</p>
+
+              {/* Scenario Analysis */}
+              {data.prediction.scenarios && data.prediction.scenarios.length > 0 && (
+                <div className="mt-4 border border-border-subtle">
+                  <div className="px-3 py-2 bg-surface-raised/50 border-b border-border-subtle">
+                    <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
+                      What If — Acceptance Rate Scenarios
+                    </span>
+                  </div>
+                  <div className="divide-y divide-border-subtle">
+                    {data.prediction.scenarios.map((sc, i) => (
+                      <div key={i} className={`flex items-center justify-between px-3 py-2 ${
+                        sc.getsCalled ? "bg-ember/5" : ""
+                      }`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className={`w-2 h-2 shrink-0 ${sc.getsCalled ? "bg-ember" : "bg-muted/30"}`} />
+                          <div>
+                            <span className="font-mono text-xs text-foreground">{sc.acceptRate}</span>
+                            <span className="font-mono text-[10px] text-muted ml-2">{sc.label}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="font-mono text-[10px] text-muted">~{sc.namesCalledOver6Off} names</span>
+                          {sc.getsCalled ? (
+                            <span className="font-mono text-[11px] text-ember font-bold">YES (+{sc.margin})</span>
+                          ) : (
+                            <span className="font-mono text-[11px] text-muted">No ({sc.margin})</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-3 py-2 bg-surface-raised/30">
+                    <p className="font-mono text-[10px] text-muted leading-relaxed">
+                      You&apos;re {data.prediction.positionsAhead} away on the list.
+                      {data.prediction.scenarios.filter((s) => s.getsCalled).length === 0
+                        ? " None of these scenarios reach you — very unlikely to get called."
+                        : data.prediction.scenarios.filter((s) => s.getsCalled).length === data.prediction.scenarios.length
+                          ? " Every scenario reaches you — expect the call."
+                          : ` You get called in ${data.prediction.scenarios.filter((s) => s.getsCalled).length} of ${data.prediction.scenarios.length} scenarios. ${
+                              data.prediction.scenarios.find((s) => s.getsCalled)
+                                ? `The tipping point is around ${data.prediction.scenarios.find((s) => s.getsCalled)?.acceptRate} acceptance — if fewer people than that accept, they'll reach you.`
+                                : ""
+                            }`
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
