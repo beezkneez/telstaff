@@ -307,12 +307,28 @@ export default function DashboardPage() {
           {viewMode === "my-station" && (
             <StationDropdown value={station} onChange={setStation} />
           )}
+          <button
+            onClick={() => {
+              const d = new Date(selectedDate + "T12:00:00");
+              d.setDate(d.getDate() - 1);
+              setSelectedDate(d.toISOString().split("T")[0]);
+            }}
+            className="px-2 py-2 bg-surface border border-border font-mono text-xs hover:border-ember/40 transition-colors"
+          >←</button>
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             className="px-3 py-2 bg-surface border border-border font-mono text-[11px] tracking-wider text-foreground transition-colors focus:border-ember/50 cursor-pointer"
           />
+          <button
+            onClick={() => {
+              const d = new Date(selectedDate + "T12:00:00");
+              d.setDate(d.getDate() + 1);
+              setSelectedDate(d.toISOString().split("T")[0]);
+            }}
+            className="px-2 py-2 bg-surface border border-border font-mono text-xs hover:border-ember/40 transition-colors"
+          >→</button>
           <div className="relative">
             <input
               type="text"

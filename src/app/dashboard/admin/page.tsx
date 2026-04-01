@@ -353,6 +353,38 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
+
+        {/* Status Codes Reference */}
+        <div className="bg-surface border border-border animate-fade-slide-up delay-400">
+          <div className="px-4 py-3 border-b border-border bg-surface-raised/50">
+            <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
+              Status Codes
+            </h2>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+              {[
+                { code: "REG", color: "text-muted", bg: "", label: "Regular — On Roster" },
+                { code: "TW", color: "text-fuchsia-400", bg: "bg-fuchsia-500/10", label: "Trade Working — On Roster" },
+                { code: "TWU", color: "text-fuchsia-400", bg: "bg-fuchsia-500/10", label: "Trade Working Union — On Roster" },
+                { code: "ATI", color: "text-purple-400", bg: "bg-purple-900/20", label: "Acting Training Instructor — On Roster" },
+                { code: "Ins", color: "text-orange-400", bg: "bg-orange-900/20", label: "Instructor (any) — On Roster" },
+                { code: ".Vac", color: "text-yellow-400", bg: "bg-yellow-500/10", label: "Vacation — Off Roster" },
+                { code: ".TNW", color: "text-fuchsia-400", bg: "bg-fuchsia-500/10", label: "Trade Not Working — Off Roster" },
+                { code: ".TNW Union", color: "text-fuchsia-400", bg: "bg-fuchsia-500/10", label: "TNW Union — Off Roster" },
+                { code: "LieuO", color: "text-green-400", bg: "bg-green-500/10", label: "Lieu Day Off — Off Roster" },
+                { code: ".SA", color: "text-emerald-400", bg: "bg-emerald-900/20", label: "Special Assignment (any) — Off Roster" },
+                { code: ".SUR", color: "text-purple-300", bg: "bg-purple-950/30", label: "Sick Update Required — Off Roster" },
+                { code: "Sick", color: "text-muted", bg: "", label: "Sick — Off Roster" },
+              ].map((s) => (
+                <div key={s.code} className={`flex items-center justify-between px-3 py-1.5 ${s.bg}`}>
+                  <span className={`font-mono text-[11px] font-bold ${s.color}`}>{s.code}</span>
+                  <span className="font-mono text-[10px] text-muted">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
