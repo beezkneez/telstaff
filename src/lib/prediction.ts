@@ -196,16 +196,16 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     explanation = "No recent overtime data available yet. Once the scraper collects more data, the prediction will be more accurate.";
   } else if (positionsAhead < totalNamesOver6Off * 0.3) {
     probability = "high";
-    explanation = `You're ${positionsAhead} away on the list. Last 6-off, they needed ${last6OffTotal} OT members across 4 days (averaging ${avgPerDay} per day). To fill those spots, they'd call through roughly ${totalNamesOver6Off} names on the list. You're well within that range with ${buffer} names of buffer — expect the call, probably multiple shifts.`;
+    explanation = `You're ${positionsAhead} away on the list. Last 6-off, ${last6OffTotal} people actually worked overtime across 4 eligible days (about ${avgPerDay} per day). To fill those ${last6OffTotal} spots, they typically have to dial through about ${totalNamesOver6Off} names because not everyone answers or accepts. You're well within that range with ${buffer} names of buffer — expect the call, probably multiple shifts.`;
     if (recentTrend === "rising") {
       explanation += ` OT demand has been trending up lately, which makes this even more likely.`;
     }
   } else if (positionsAhead < totalNamesOver6Off * 0.5) {
     probability = "high";
-    explanation = `You're ${positionsAhead} away. Last 6-off saw ${last6OffTotal} OT call-ins total. At a ${callThroughRatio}:1 call-through rate (${dayOfWeek} pattern), they'd go through about ${totalNamesOver6Off} names. You've got a solid ${buffer}-name cushion — very likely to get at least one call.`;
+    explanation = `You're ${positionsAhead} away. Last 6-off, ${last6OffTotal} people worked overtime total. At a ${callThroughRatio}:1 call-through rate, they'd have to dial about ${totalNamesOver6Off} names to fill those ${last6OffTotal} spots (since many decline or don't answer). You're comfortably inside that range — very likely to get at least one call.`;
   } else if (positionsAhead < totalNamesOver6Off * 0.85) {
     probability = "medium";
-    explanation = `You're ${positionsAhead} away on the list. Last cycle had ${last6OffTotal} OT members, meaning they called through roughly ${totalNamesOver6Off} names. That puts you in the zone — you'll probably get a call on the busier days, but might not get hit every shift. ${avgPerDay > 10 ? `With ${avgPerDay} per day average, the busy days should reach you.` : `With only ${avgPerDay} per day average, it's a coin flip.`}`;
+    explanation = `You're ${positionsAhead} away on the list. Last cycle, ${last6OffTotal} people worked overtime. To fill those spots, they'd dial through roughly ${totalNamesOver6Off} names. That puts you in the zone — you'll probably get a call on the busier days, but might not get hit every shift. ${avgPerDay > 10 ? `With ${avgPerDay} per day average, the busy days should reach you.` : `With only ${avgPerDay} per day average, it's a coin flip.`}`;
     if (recentTrend === "rising") {
       explanation += ` Demand has been trending up recently which works in your favour.`;
     } else if (recentTrend === "falling") {
@@ -213,16 +213,16 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     }
   } else if (positionsAhead < totalNamesOver6Off * 1.1) {
     probability = "low";
-    explanation = `You're ${positionsAhead} away — right on the edge. Last 6-off had ${last6OffTotal} call-ins (~${totalNamesOver6Off} names called through). You're ${positionsAhead > totalNamesOver6Off ? `${positionsAhead - totalNamesOver6Off} past` : `${buffer} inside`} the estimated cutoff. Could go either way — if a couple extra people book off or if it's a particularly busy night, you might get the call. But don't count on it.`;
+    explanation = `You're ${positionsAhead} away — right on the edge. Last 6-off, ${last6OffTotal} people worked overtime, meaning they dialed through roughly ${totalNamesOver6Off} names to fill those spots. You're ${positionsAhead > totalNamesOver6Off ? `${positionsAhead - totalNamesOver6Off} past` : `${buffer} inside`} the estimated cutoff. Could go either way — if a couple extra people book off or if it's a particularly busy night, you might get the call. But don't count on it.`;
     if (stat.near) {
       explanation += ` Plus ${stat.holiday} is ${stat.daysAway} days away which usually reduces demand.`;
     }
   } else if (positionsAhead < totalNamesOver6Off * 1.5) {
     probability = "unlikely";
-    explanation = `You're ${positionsAhead} away on the list. Based on last 6-off (${last6OffTotal} OT, ~${totalNamesOver6Off} names called through), you're about ${positionsAhead - totalNamesOver6Off} spots past where they'd typically stop. It would take an unusually busy stretch — like a major event or flu season — for them to reach you this cycle.`;
+    explanation = `You're ${positionsAhead} away on the list. Last 6-off, ${last6OffTotal} people worked overtime — to fill those spots they'd dial about ${totalNamesOver6Off} names. You're about ${positionsAhead - totalNamesOver6Off} spots past where they'd typically stop. It would take an unusually busy stretch for them to reach you this cycle.`;
   } else {
     probability = "unlikely";
-    explanation = `You're ${positionsAhead} away, and last cycle they only went through roughly ${totalNamesOver6Off} names. That puts you ${positionsAhead - totalNamesOver6Off} spots beyond their reach. Barring something extraordinary, you won't be getting a call this 6-off. Enjoy your days off.`;
+    explanation = `You're ${positionsAhead} away, and last cycle they'd only need to dial through roughly ${totalNamesOver6Off} names to fill ${last6OffTotal} OT spots. That puts you ${positionsAhead - totalNamesOver6Off} spots beyond their reach. Barring something extraordinary, you won't be getting a call this 6-off. Enjoy your days off.`;
   }
 
   // Add stat holiday context if nearby but not already covered

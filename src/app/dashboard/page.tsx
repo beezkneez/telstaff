@@ -398,7 +398,7 @@ export default function DashboardPage() {
         <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-px animate-fade-slide-up delay-300">
           {(() => {
             const isOff = (t: { type: string; truck: string }) =>
-              t.type === "OffRoster" || /^ff\s+\d/i.test(t.truck);
+              t.type === "OffRoster" || /^ff\s*\d/i.test(t.truck);
             const activeUnits = regularStations.reduce(
               (sum, s) => sum + s.trucks.filter((t) => !isOff(t)).length, 0
             );

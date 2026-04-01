@@ -214,7 +214,7 @@ async function parseRosterPage(
       } else if (marker.type === "truck" && currentStation) {
         const lower = marker.name.toLowerCase();
         let truckType = "Other";
-        if (lower.match(/^ff\s+\d/)) truckType = "OffRoster";
+        if (lower.match(/^ff\s*\d/)) truckType = "OffRoster";
         else if (lower.includes("tanker")) truckType = "Tanker";
         else if (lower.includes("pump") || lower.includes("engine")) truckType = "Engine";
         else if (lower.includes("ladder") || lower.includes("tower") || lower.includes("quint")) truckType = "Ladder";

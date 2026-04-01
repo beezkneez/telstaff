@@ -39,7 +39,7 @@ export default function StationCard({
   animationDelay = 0,
 }: StationCardProps) {
   const isOffRoster = (t: TruckAssignment) =>
-    t.type === "OffRoster" || /^ff\s+\d/i.test(t.truck);
+    t.type === "OffRoster" || /^ff\s*\d/i.test(t.truck);
   const activeTrucks = trucks.filter((t) => !isOffRoster(t));
   const offRosterTrucks = trucks.filter((t) => isOffRoster(t));
   const activeCrew = activeTrucks.reduce((sum, t) => sum + t.crew.length, 0);
