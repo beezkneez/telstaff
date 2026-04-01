@@ -8,7 +8,7 @@ function getResend(): Resend | null {
   return _resend;
 }
 
-const FROM_EMAIL = "BetterStaff <onboarding@resend.dev>";
+const FROM_EMAIL = "BetterStaff <noreply@kronara.app>";
 
 export async function sendWelcomeEmail(to: string, name: string) {
   if (!process.env.RESEND_API_KEY) {
