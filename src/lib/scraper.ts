@@ -131,7 +131,7 @@ async function parseRosterPage(
       | { type: "district"; num: number; el: Element }
       | { type: "station"; num: number; el: Element }
       | { type: "truck"; name: string; phone: string; el: Element }
-      | { type: "crew"; name: string; rank: string; quals: string; el: Element };
+      | { type: "crew"; name: string; rank: string; quals: string; status: string; el: Element };
 
     const markers: Marker[] = [];
 
@@ -169,9 +169,9 @@ async function parseRosterPage(
       const qualMatch = fullText.match(/\(([^)]+)\)/);
       const quals = qualMatch ? qualMatch[1] : "";
 
-      // Find the rank from a nearby span.positionNameText
-      // Walk up to find the crew row container, then find positionNameText within it
+      // Walk up to find the crew row container
       let rank = "";
+      let status = "";
       let parent = el.parentElement;
       for (let i = 0; i < 5 && parent; i++) {
         const rankEl = parent.querySelector("span.positionNameText");
@@ -182,7 +182,23 @@ async function parseRosterPage(
         parent = parent.parentElement;
       }
 
-      markers.push({ type: "crew", name, rank, quals, el });
+      // Look for status text — check for elements with status codes near the crew row
+      // Status might be in a sibling or nearby element with specific text patterns
+      let statusParent = el.parentElement;
+      for (let i = 0; i < 6 && statusParent; i++) {
+        // Look for text matching status patterns
+        const allText = statusParent.querySelectorAll("span, div");
+        allText.forEach((span) => {
+          const t = span.textContent?.trim() || "";
+          if (!status && /^(\.?TNW|\.?TW|\.?Vac|REG|LieuO|LieuE|OTWP|Rel Supp|\.?Sick)/i.test(t)) {
+            status = t;
+          }
+        });
+        if (status) break;
+        statusParent = statusParent.parentElement;
+      }
+
+      markers.push({ type: "crew", name, rank, quals, el, status });
     });
 
     // Sort markers by DOM order
@@ -236,7 +252,7 @@ async function parseRosterPage(
           rank: marker.rank,
           position: marker.rank,
           employeeId: "",
-          status: "",
+          status: marker.status || "",
           qualifications: marker.quals,
         });
       }

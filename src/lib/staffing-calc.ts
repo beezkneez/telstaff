@@ -4,7 +4,7 @@ import { REQUIRED_CREW } from "./prediction";
 interface TruckData {
   truck: string;
   type: string;
-  crew: { name: string; rank: string }[];
+  crew: { name: string; rank: string; status?: string }[];
 }
 
 interface StationData {
@@ -69,8 +69,14 @@ export function calculateShortfall(
     for (const truck of station.trucks) {
       if (isOffRoster(truck)) continue;
 
-      // Filter out support staff
-      const activeCrew = truck.crew.filter((c) => !isSupportRank(c.rank || ""));
+      // Filter out support staff and off-roster statuses (TNW, Vac, LieuO)
+      // TW (Trade Working) counts as on-roster
+      const activeCrew = truck.crew.filter((c) => {
+        if (isSupportRank(c.rank || "")) return false;
+        const st = (c.status || "").toLowerCase();
+        if (st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick")) return false;
+        return true;
+      });
       const captains = activeCrew.filter((c) => isCaptainRank(c.rank || ""));
       const ffs = activeCrew.filter((c) => !isCaptainRank(c.rank || ""));
 

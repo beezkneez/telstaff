@@ -104,12 +104,22 @@ export default function StationCard({
                   const sqLC = searchQuery?.toLowerCase() || "";
                   const isUser = hlLC && nameLC.includes(hlLC.split(" ").pop() || "");
                   const isSearchMatch = sqLC && nameLC.includes(sqLC);
+                  const st = member.status?.toLowerCase() || "";
+                  const isVac = st.includes("vac");
+                  const isTNW = st.includes("tnw");
+                  const isTW = st.includes("tw") && !st.includes("tnw") && !st.includes("otwp");
+                  const isLieu = st.includes("lieuo");
+                  const statusBg = isUser ? "bg-ember/10 border-l-2 border-l-ember"
+                    : isSearchMatch ? "bg-amber/10 border-l-2 border-l-amber"
+                    : isVac ? "bg-yellow-500/8"
+                    : isTNW ? "bg-fuchsia-500/8"
+                    : isTW ? "bg-fuchsia-500/8"
+                    : isLieu ? "bg-green-500/8"
+                    : "";
                   return (
                   <div
                     key={idx}
-                    className={`flex items-center justify-between py-1.5 px-2 hover:bg-surface-overlay/30 transition-colors group ${
-                      isUser ? "bg-ember/10 border-l-2 border-l-ember" : isSearchMatch ? "bg-amber/10 border-l-2 border-l-amber" : ""
-                    }`}
+                    className={`flex items-center justify-between py-1.5 px-2 hover:bg-surface-overlay/30 transition-colors group ${statusBg}`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={`w-5 h-5 flex items-center justify-center font-mono text-[9px] font-bold border ${
@@ -126,15 +136,19 @@ export default function StationCard({
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      {member.status && (
-                        <span className={`font-mono text-[11px] tracking-wider px-1.5 py-0.5 ${
-                          member.status === "REG"
-                            ? "text-muted"
-                            : member.status?.includes("Vac")
-                              ? "bg-alert-red/10 text-alert-red border border-alert-red/20"
-                              : "bg-amber/10 text-amber border border-amber/20"
+                      {member.status && member.status !== "REG" && (
+                        <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 border ${
+                          isVac
+                            ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                            : isTNW
+                              ? "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20"
+                              : isTW
+                                ? "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20"
+                                : isLieu
+                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                  : "bg-surface-overlay text-muted border-border"
                         }`}>
-                          {member.status}
+                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : member.status}
                         </span>
                       )}
                       <span className={`font-mono text-[11px] tracking-wider uppercase ${
