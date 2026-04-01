@@ -110,6 +110,17 @@ export default function AdminPage() {
     showMessage("Scrape triggered — check logs");
   }
 
+  async function importCallInList() {
+    if (!confirm("Import call-in list from Google Sheet? This will set up the database.")) return;
+    const res = await fetch("/api/admin/callin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "import-sheet" }),
+    });
+    const data = await res.json();
+    showMessage(`Imported ${data.imported} members from Google Sheet`);
+  }
+
   async function backfillYTD() {
     if (!confirm("Backfill OTWP data from Jan 1 to today? This runs in the background and may take 1-2 hours.")) return;
     const res = await fetch("/api/admin/backfill", { method: "POST" });
@@ -264,6 +275,12 @@ export default function AdminPage() {
                 Cache
               </h2>
               <div className="flex gap-2">
+                <button
+                  onClick={importCallInList}
+                  className="px-3 py-1.5 bg-success/20 border border-success/30 text-success font-mono text-[10px] tracking-wider uppercase hover:bg-success/30 transition-all"
+                >
+                  Import Call-In List
+                </button>
                 <button
                   onClick={backfillYTD}
                   className="px-3 py-1.5 bg-ember/20 border border-ember/30 text-ember font-mono text-[10px] tracking-wider uppercase hover:bg-ember/30 transition-all"
