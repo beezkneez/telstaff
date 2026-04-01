@@ -72,15 +72,15 @@ export default function StationCard({
     }
   }
 
-  // Count TW people from FF trucks as on-roster
-  const twOnFFTrucks = trucks
+  // Count TW/TWU/Rel Supp people from FF trucks as on-roster
+  const onRosterOnFFTrucks = trucks
     .filter((t) => isOffRosterTruck(t))
     .reduce((sum, t) => sum + t.crew.filter((c) => {
-      const st = c.status?.toLowerCase() || "";
-      return st.includes("tw") && !st.includes("tnw") && !st.includes("otwp");
+      const st = c.status?.toLowerCase().trim() || "";
+      return (st === "tw" || st === "twu" || st.includes("rel supp") || st.includes("rel support"));
     }).length, 0);
 
-  const activeCrew = activeTrucks.reduce((sum, t) => sum + t.crew.length, 0) + twOnFFTrucks;
+  const activeCrew = activeTrucks.reduce((sum, t) => sum + t.crew.length, 0) + onRosterOnFFTrucks;
   const totalCrew = activeCrew + offRosterMembers.length;
 
   return (
@@ -146,6 +146,7 @@ export default function StationCard({
                   const isATI = st.includes("ati");
                   const isIns = st.includes("ins ");
                   const isSUR = st.includes("sur");
+                  const isRelSupp = st.includes("rel supp") || st.includes("rel support");
                   const statusBg = isUser ? "bg-ember/10 border-l-2 border-l-ember"
                     : isSearchMatch ? "bg-amber/10 border-l-2 border-l-amber"
                     : isVac ? "bg-yellow-500/8"
@@ -156,6 +157,7 @@ export default function StationCard({
                     : isSUR ? "bg-purple-950/30"
                     : isATI ? "bg-purple-900/20"
                     : isIns ? "bg-orange-900/20"
+                    : isRelSupp ? "bg-sky-900/20"
                     : "";
                   return (
                   <div
@@ -195,9 +197,11 @@ export default function StationCard({
                                         : "bg-purple-900/30 text-purple-400 border-purple-500/20"
                                       : isIns
                                         ? "bg-orange-900/30 text-orange-400 border-orange-500/20"
-                                        : "bg-surface-overlay text-muted border-border"
+                                        : isRelSupp
+                                          ? "bg-sky-900/30 text-sky-400 border-sky-500/20"
+                                          : "bg-surface-overlay text-muted border-border"
                         }`}>
-                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : isSA ? "SA" : isSUR ? "SUR" : isATI ? "ATI" : isIns ? "INS" : member.status}
+                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : isSA ? "SA" : isSUR ? "SUR" : isATI ? "ATI" : isIns ? "INS" : isRelSupp ? "REL" : member.status}
                         </span>
                       )}
                       <span className={`font-mono text-[11px] tracking-wider uppercase ${

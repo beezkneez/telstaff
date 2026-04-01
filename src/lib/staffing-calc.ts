@@ -74,8 +74,8 @@ export function calculateShortfall(
       const activeCrew = truck.crew.filter((c) => {
         if (isSupportRank(c.rank || "")) return false;
         const st = (c.status || "").toLowerCase();
-        // TW/TWU stay on roster
-        if (st === "tw" || st === "twu") return true;
+        // TW/TWU/Rel Supp stay on roster
+        if (st === "tw" || st === "twu" || st.includes("rel supp") || st.includes("rel support")) return true;
         // These are off roster
         if (st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa") || st.includes("sur")) return false;
         return true;
