@@ -143,6 +143,8 @@ export default function StationCard({
                   const isTW = (st === "tw" || st === "twu");
                   const isLieu = st.includes("lieuo");
                   const isSA = st.includes(".sa");
+                  const isATI = st.includes("ati");
+                  const isIns = st.includes("ins ");
                   const statusBg = isUser ? "bg-ember/10 border-l-2 border-l-ember"
                     : isSearchMatch ? "bg-amber/10 border-l-2 border-l-amber"
                     : isVac ? "bg-yellow-500/8"
@@ -150,6 +152,8 @@ export default function StationCard({
                     : isTW ? "bg-fuchsia-500/8"
                     : isLieu ? "bg-green-500/8"
                     : isSA ? "bg-emerald-900/20"
+                    : isATI ? "bg-purple-900/20"
+                    : isIns ? "bg-orange-900/20"
                     : "";
                   return (
                   <div
@@ -183,9 +187,13 @@ export default function StationCard({
                                   ? "bg-green-500/10 text-green-400 border-green-500/20"
                                   : isSA
                                     ? "bg-emerald-900/30 text-emerald-400 border-emerald-500/20"
-                                    : "bg-surface-overlay text-muted border-border"
+                                    : isATI
+                                      ? "bg-purple-900/30 text-purple-400 border-purple-500/20"
+                                      : isIns
+                                        ? "bg-orange-900/30 text-orange-400 border-orange-500/20"
+                                        : "bg-surface-overlay text-muted border-border"
                         }`}>
-                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : isSA ? "SA" : member.status}
+                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : isSA ? "SA" : isATI ? "ATI" : isIns ? "INS" : member.status}
                         </span>
                       )}
                       <span className={`font-mono text-[11px] tracking-wider uppercase ${
