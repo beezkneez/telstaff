@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
 interface DayShiftInfo {
   date: string;
   onShift: { dayShift: string | null; nightShift: string | null };
@@ -13,6 +12,46 @@ const PLATOON_COLORS: Record<string, string> = {
   "3": "var(--platoon-3)",
   "4": "var(--platoon-4)",
 };
+
+// Alberta stat holidays (simplified for client side)
+function getStatHolidays(year: number): string[] {
+  const getNth = (y: number, m: number, wd: number, n: number) => {
+    let count = 0;
+    for (let d = 1; d <= 31; d++) {
+      const dt = new Date(y, m - 1, d);
+      if (dt.getMonth() !== m - 1) break;
+      if (dt.getDay() === wd) { count++; if (count === n) return dt.toISOString().split("T")[0]; }
+    }
+    return "";
+  };
+  const monBefore = (y: number, m: number, d: number) => {
+    const t = new Date(y, m - 1, d);
+    while (t.getDay() !== 1) t.setDate(t.getDate() - 1);
+    return t.toISOString().split("T")[0];
+  };
+  const h = [
+    `${year}-01-01`, getNth(year, 2, 1, 3), monBefore(year, 5, 25),
+    `${year}-07-01`, getNth(year, 8, 1, 1), getNth(year, 9, 1, 1),
+    `${year}-09-30`, getNth(year, 10, 1, 2), `${year}-11-11`, `${year}-12-25`,
+  ];
+  if (year === 2026) h.push("2026-04-03");
+  if (year === 2027) h.push("2027-03-26");
+  return h;
+}
+
+function isStatHoliday(dateStr: string): boolean {
+  const year = parseInt(dateStr.split("-")[0]);
+  return getStatHolidays(year).includes(dateStr);
+}
+
+// Payday: March 31, 2026 and every 2 weeks
+const PAYDAY_ANCHOR = new Date("2026-03-31T12:00:00");
+
+function isPayday(dateStr: string): boolean {
+  const d = new Date(dateStr + "T12:00:00");
+  const diff = Math.round((d.getTime() - PAYDAY_ANCHOR.getTime()) / (1000 * 60 * 60 * 24));
+  return diff % 14 === 0;
+}
 
 export default function CalendarPage() {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -64,7 +103,6 @@ export default function CalendarPage() {
   let currentWeek: (DayShiftInfo | null)[] = [];
 
   for (let i = 0; i < firstDay; i++) currentWeek.push(null);
-
   for (let d = 1; d <= daysInMonth; d++) {
     const dayData = days.find(
       (dd) => dd.date === `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`
@@ -72,7 +110,6 @@ export default function CalendarPage() {
     currentWeek.push(dayData);
     if (currentWeek.length === 7) { weeks.push(currentWeek); currentWeek = []; }
   }
-
   while (currentWeek.length > 0 && currentWeek.length < 7) currentWeek.push(null);
   if (currentWeek.length > 0) weeks.push(currentWeek);
 
@@ -106,6 +143,13 @@ export default function CalendarPage() {
             </span>
           </div>
         ))}
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 border-2 border-white" />
+          <span className="font-mono text-[10px] text-muted">Stat</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-[10px] text-muted">✕ = Payday</span>
+        </div>
         <span className="font-mono text-[10px] text-muted">Top = Day · Bottom = Night</span>
       </div>
 
@@ -118,11 +162,11 @@ export default function CalendarPage() {
           </svg>
         </div>
       ) : (
-        <div className="border border-border animate-fade-slide-up delay-300">
+        <div className="border-2 border-border animate-fade-slide-up delay-300">
           {/* Day headers */}
           <div className="grid grid-cols-7">
             {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => (
-              <div key={d} className="px-1 py-2 text-center font-mono text-[10px] tracking-[0.2em] text-muted bg-surface-raised/50 border-b border-border">
+              <div key={d} className="py-3 text-center font-display text-sm font-bold tracking-[0.25em] text-foreground bg-surface-raised border-b-2 border-border">
                 {d}
               </div>
             ))}
@@ -133,24 +177,41 @@ export default function CalendarPage() {
             <div key={wi} className="grid grid-cols-7">
               {week.map((day, di) => {
                 if (!day) {
-                  return <div key={di} className="h-[72px] bg-surface/20 border-r-2 border-b-2 border-background last:border-r-0" />;
+                  return <div key={di} className="aspect-square bg-surface/20 border-r-2 border-b-2 border-background last:border-r-0" />;
                 }
 
                 const dateNum = parseInt(day.date.split("-")[2]);
                 const isToday = day.date === today;
                 const dayPlatoon = day.onShift?.dayShift;
                 const nightPlatoon = day.onShift?.nightShift;
+                const isStat = isStatHoliday(day.date);
+                const payday = isPayday(day.date);
 
                 return (
                   <div
                     key={di}
-                    className={`h-[72px] flex flex-col border-r-2 border-b-2 border-background last:border-r-0 overflow-hidden relative ${
-                      isToday ? "ring-2 ring-ember ring-inset" : ""
+                    className={`aspect-square flex flex-col border-r-2 border-b-2 border-background last:border-r-0 overflow-hidden relative ${
+                      isToday ? "ring-3 ring-ember ring-inset" : ""
                     }`}
                   >
+                    {/* Stat holiday border */}
+                    {isStat && (
+                      <div className="absolute inset-[3px] border-[3px] border-white z-20 pointer-events-none" />
+                    )}
+
+                    {/* Payday X overlay */}
+                    {payday && (
+                      <div className="absolute inset-0 z-10 pointer-events-none">
+                        <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                          <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="2" strokeOpacity="0.5" />
+                          <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="2" strokeOpacity="0.5" />
+                        </svg>
+                      </div>
+                    )}
+
                     {/* Day number */}
-                    <div className={`absolute top-0.5 left-1 z-10 font-mono text-[11px] font-extrabold drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${
-                      isToday ? "text-white" : "text-white/90"
+                    <div className={`absolute top-1 left-1.5 z-30 font-display text-base font-extrabold drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] ${
+                      isToday ? "text-white" : "text-white"
                     }`}>
                       {dateNum}
                     </div>
@@ -159,9 +220,7 @@ export default function CalendarPage() {
                     <div
                       className="flex-1"
                       style={{
-                        backgroundColor: dayPlatoon
-                          ? PLATOON_COLORS[dayPlatoon]
-                          : "var(--surface)",
+                        backgroundColor: dayPlatoon ? PLATOON_COLORS[dayPlatoon] : "var(--surface)",
                       }}
                     />
 
@@ -172,9 +231,7 @@ export default function CalendarPage() {
                     <div
                       className="flex-1"
                       style={{
-                        backgroundColor: nightPlatoon
-                          ? PLATOON_COLORS[nightPlatoon]
-                          : "var(--surface)",
+                        backgroundColor: nightPlatoon ? PLATOON_COLORS[nightPlatoon] : "var(--surface)",
                       }}
                     />
                   </div>
