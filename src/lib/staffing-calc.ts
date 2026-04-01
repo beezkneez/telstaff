@@ -35,7 +35,7 @@ export interface StaffingShortfall {
 }
 
 function isOffRoster(t: TruckData): boolean {
-  return t.type === "OffRoster" || /^ff\s+\d/i.test(t.truck);
+  return t.type === "OffRoster" || /^ff\s*\d/i.test(t.truck);
 }
 
 function isSupportRank(rank: string): boolean {
@@ -53,6 +53,13 @@ function isCaptainRank(rank: string): boolean {
   return lower.includes("captain");
 }
 
+function isOffRosterStatus(status: string): boolean {
+  const st = (status || "").toLowerCase();
+  if (st === "tw" || st === "twu" || st === "24tw") return false;
+  if (st.includes("rel supp") || st.includes("rel support")) return false;
+  return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa") || st.includes("sur");
+}
+
 export function calculateShortfall(
   stations: StationData[],
   platoon: string,
@@ -65,40 +72,58 @@ export function calculateShortfall(
   let totalCaptainHoles = 0;
   const truckBreakdown: TruckShortfall[] = [];
 
+  // Count off-roster qualified people who can fill captain spots
+  let offRosterQualified = 0;
   for (const station of stations) {
+    if (station.station >= 900) continue;
+    for (const truck of station.trucks) {
+      if (!isOffRoster(truck)) continue;
+      for (const c of truck.crew) {
+        if (isOffRosterStatus(c.status || "")) continue;
+        const rank = (c.rank || "").toLowerCase();
+        if (rank.includes("qualified")) {
+          offRosterQualified++;
+        }
+      }
+    }
+  }
+
+  let captainHolesRemaining = 0;
+
+  for (const station of stations) {
+    // Skip support staff stations (ECS, Investigations = 900+)
+    if (station.station >= 900) continue;
+
     for (const truck of station.trucks) {
       if (isOffRoster(truck)) continue;
 
-      // Filter out support staff and off-roster statuses
-      // TW and TWU (Trade Working) count as on-roster
+      // Filter to active crew only
       const activeCrew = truck.crew.filter((c) => {
         if (isSupportRank(c.rank || "")) return false;
-        const st = (c.status || "").toLowerCase();
-        // TW/TWU/Rel Supp stay on roster
-        if (st === "tw" || st === "twu" || st.includes("rel supp") || st.includes("rel support")) return true;
-        // These are off roster
-        if (st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa") || st.includes("sur")) return false;
-        return true;
+        return !isOffRosterStatus(c.status || "");
       });
       const captains = activeCrew.filter((c) => isCaptainRank(c.rank || ""));
       const ffs = activeCrew.filter((c) => !isCaptainRank(c.rank || ""));
 
-      // Required crew for this truck (check station overrides first)
+      // Required crew for this truck
       const truckType = truck.type || "Other";
       const stationStr = String(station.station);
       const override = STATION_OVERRIDES[stationStr]?.[truckType];
       const totalReq = override || REQUIRED_CREW[truckType] || REQUIRED_CREW[truck.truck.split(" ")[0]] || 4;
-      const requiredCaptains = 1; // every truck needs 1 captain
+
+      // Service and Salvage trucks don't require captains
+      const noCaptainRequired = truckType === "Service" || truckType === "Salvage";
+      const requiredCaptains = noCaptainRequired ? 0 : 1;
       const requiredFF = totalReq - requiredCaptains;
 
       totalRequired += totalReq;
       totalActual += activeCrew.length;
 
       const hasCaptain = captains.length >= requiredCaptains;
-      const needsCaptain = !hasCaptain;
+      const needsCaptain = !hasCaptain && !noCaptainRequired;
       const ffShort = Math.max(0, requiredFF - ffs.length);
 
-      if (needsCaptain) totalCaptainHoles++;
+      if (needsCaptain) captainHolesRemaining++;
       totalFFHoles += ffShort;
 
       if (ffShort > 0 || needsCaptain) {
@@ -114,6 +139,9 @@ export function calculateShortfall(
       }
     }
   }
+
+  // Off-roster qualified can fill captain spots — reduce captain holes
+  totalCaptainHoles = Math.max(0, captainHolesRemaining - offRosterQualified);
 
   return {
     date,
