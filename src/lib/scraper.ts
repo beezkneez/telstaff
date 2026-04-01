@@ -149,7 +149,7 @@ async function parseRosterPage(
     });
 
     // Parse Trucks from ALL span.bold — match truck name patterns
-    const truckPattern = /^(Pump|Engine|Ladder|Tower|Rescue|Hazmat|Haz|Medic|FF|Command|Battalion|Quint|Aerial|Squad|Tanker|ATP|District Chief|DC)\s/i;
+    const truckPattern = /^(Pump|Engine|Ladder|Tower|Rescue|Hazmat|Haz|Medic|FF|Command|Battalion|Quint|Aerial|Squad|Tanker|ATP|Service Truck|Salvage Truck|District Chief|DC)\s*/i;
     allBoldSpans.forEach((span) => {
       const text = span.textContent?.trim() || "";
       if (truckPattern.test(text)) {
@@ -226,6 +226,8 @@ async function parseRosterPage(
         const lower = marker.name.toLowerCase();
         let truckType = "Other";
         if (lower.match(/^ff\s*\d/)) truckType = "OffRoster";
+        else if (lower.includes("service truck")) truckType = "Service";
+        else if (lower.includes("salvage truck")) truckType = "Salvage";
         else if (lower.includes("tanker")) truckType = "Tanker";
         else if (lower.includes("pump") || lower.includes("engine")) truckType = "Engine";
         else if (lower.includes("ladder") || lower.includes("tower") || lower.includes("quint")) truckType = "Ladder";

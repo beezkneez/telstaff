@@ -56,12 +56,22 @@ export const REQUIRED_CREW: Record<string, number> = {
   Ladder: 4,    // 1 captain + 3 FF
   Aerial: 4,    // 1 captain + 3 FF
   Hazmat: 5,    // 1 captain + 4 FF
-  Tanker: 2,    // 1 captain + 1 FF
-  Rescue: 4,    // 1 captain + 3 FF
-  Medic: 2,     // 1 captain + 1 FF
+  Tanker: 2,    // 1 captain + 1 FF (min, can have up to 1 capt + 3 FF)
+  Rescue: 4,    // 1 captain + 3 FF (Station 21 = 5, handled in calc)
+  Service: 1,   // 1 driver (Station 29)
+  Salvage: 1,   // 1 driver (Station 26)
+  Medic: 2,
   Command: 1,
   Squad: 4,
 };
+
+// Station 21 Rescue requires 5 (boat hall, 1 extra like hazmat)
+export const STATION_OVERRIDES: Record<string, Record<string, number>> = {
+  "21": { Rescue: 5 },
+};
+
+// Minimum staffing target for the department
+export const MIN_STAFFING = 213;
 
 // Day-of-week call-through multiplier
 // How many names they need to call to fill N slots

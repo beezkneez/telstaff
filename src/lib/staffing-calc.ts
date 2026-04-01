@@ -1,5 +1,5 @@
 // Calculate staffing shortfalls from roster data
-import { REQUIRED_CREW } from "./prediction";
+import { REQUIRED_CREW, STATION_OVERRIDES } from "./prediction";
 
 interface TruckData {
   truck: string;
@@ -69,20 +69,25 @@ export function calculateShortfall(
     for (const truck of station.trucks) {
       if (isOffRoster(truck)) continue;
 
-      // Filter out support staff and off-roster statuses (TNW, Vac, LieuO)
-      // TW (Trade Working) counts as on-roster
+      // Filter out support staff and off-roster statuses
+      // TW and TWU (Trade Working) count as on-roster
       const activeCrew = truck.crew.filter((c) => {
         if (isSupportRank(c.rank || "")) return false;
         const st = (c.status || "").toLowerCase();
-        if (st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick")) return false;
+        // TW/TWU stay on roster
+        if (st === "tw" || st === "twu") return true;
+        // These are off roster
+        if (st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa")) return false;
         return true;
       });
       const captains = activeCrew.filter((c) => isCaptainRank(c.rank || ""));
       const ffs = activeCrew.filter((c) => !isCaptainRank(c.rank || ""));
 
-      // Required crew for this truck
+      // Required crew for this truck (check station overrides first)
       const truckType = truck.type || "Other";
-      const totalReq = REQUIRED_CREW[truckType] || REQUIRED_CREW[truck.truck.split(" ")[0]] || 4;
+      const stationStr = String(station.station);
+      const override = STATION_OVERRIDES[stationStr]?.[truckType];
+      const totalReq = override || REQUIRED_CREW[truckType] || REQUIRED_CREW[truck.truck.split(" ")[0]] || 4;
       const requiredCaptains = 1; // every truck needs 1 captain
       const requiredFF = totalReq - requiredCaptains;
 

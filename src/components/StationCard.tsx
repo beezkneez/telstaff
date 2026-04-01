@@ -22,6 +22,8 @@ const TRUCK_COLORS: Record<string, { accent: string; bg: string }> = {
   Tanker: { accent: "text-yellow-400", bg: "bg-yellow-500/5 border-yellow-500/10" },
   Hazmat: { accent: "text-fuchsia-400", bg: "bg-gradient-to-r from-red-500/5 via-yellow-500/5 to-blue-500/5 border-fuchsia-500/10" },
   Medic: { accent: "text-blue-400", bg: "bg-blue-500/5 border-blue-500/10" },
+  Service: { accent: "text-slate-400", bg: "bg-slate-500/5 border-slate-500/10" },
+  Salvage: { accent: "text-slate-400", bg: "bg-slate-500/5 border-slate-500/10" },
   Command: { accent: "text-purple-400", bg: "bg-purple-500/5 border-purple-500/10" },
   OffRoster: { accent: "text-muted", bg: "bg-surface-overlay/30 border-border-subtle" },
   Other: { accent: "text-blue-400", bg: "bg-blue-500/5 border-blue-500/10" },
@@ -46,9 +48,9 @@ export default function StationCard({
     t.type === "OffRoster" || /^ff\s*\d/i.test(t.truck);
 
   const isOffRosterStatus = (status: string) => {
-    const st = status?.toLowerCase() || "";
-    if (st.includes("tw") && !st.includes("tnw") && !st.includes("otwp")) return false; // TW stays on roster
-    return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick");
+    const st = status?.toLowerCase().trim() || "";
+    if (st === "tw" || st === "twu") return false; // TW/TWU stay on roster
+    return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa");
   };
 
   // Separate off-roster crew from active trucks
@@ -138,14 +140,16 @@ export default function StationCard({
                   const st = member.status?.toLowerCase() || "";
                   const isVac = st.includes("vac");
                   const isTNW = st.includes("tnw");
-                  const isTW = st.includes("tw") && !st.includes("tnw") && !st.includes("otwp");
+                  const isTW = (st === "tw" || st === "twu");
                   const isLieu = st.includes("lieuo");
+                  const isSA = st.includes(".sa");
                   const statusBg = isUser ? "bg-ember/10 border-l-2 border-l-ember"
                     : isSearchMatch ? "bg-amber/10 border-l-2 border-l-amber"
                     : isVac ? "bg-yellow-500/8"
                     : isTNW ? "bg-fuchsia-500/8"
                     : isTW ? "bg-fuchsia-500/8"
                     : isLieu ? "bg-green-500/8"
+                    : isSA ? "bg-emerald-900/20"
                     : "";
                   return (
                   <div
@@ -177,9 +181,11 @@ export default function StationCard({
                                 ? "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20"
                                 : isLieu
                                   ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                  : "bg-surface-overlay text-muted border-border"
+                                  : isSA
+                                    ? "bg-emerald-900/30 text-emerald-400 border-emerald-500/20"
+                                    : "bg-surface-overlay text-muted border-border"
                         }`}>
-                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : member.status}
+                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : isSA ? "SA" : member.status}
                         </span>
                       )}
                       <span className={`font-mono text-[11px] tracking-wider uppercase ${
@@ -216,11 +222,12 @@ export default function StationCard({
                 const isVac = st.includes("vac");
                 const isTNW = st.includes("tnw");
                 const isLieu = st.includes("lieuo");
+                const isSA = st.includes(".sa");
                 return (
                   <div
                     key={idx}
                     className={`flex items-center justify-between py-1.5 px-2 ${
-                      isVac ? "bg-yellow-500/8" : isTNW ? "bg-fuchsia-500/8" : isLieu ? "bg-green-500/8" : ""
+                      isVac ? "bg-yellow-500/8" : isTNW ? "bg-fuchsia-500/8" : isLieu ? "bg-green-500/8" : isSA ? "bg-emerald-900/20" : ""
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -232,13 +239,14 @@ export default function StationCard({
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      {(isVac || isTNW || isLieu) && (
+                      {(isVac || isTNW || isLieu || isSA) && (
                         <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 border ${
                           isVac ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
                             : isTNW ? "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20"
+                            : isSA ? "bg-emerald-900/30 text-emerald-400 border-emerald-500/20"
                             : "bg-green-500/10 text-green-400 border-green-500/20"
                         }`}>
-                          {isVac ? "VAC" : isTNW ? "TNW" : "LIEU"}
+                          {isVac ? "VAC" : isTNW ? "TNW" : isSA ? "SA" : "LIEU"}
                         </span>
                       )}
                       <span className="font-mono text-[11px] tracking-wider uppercase text-muted">
