@@ -72,13 +72,11 @@ export default function StationCard({
     }
   }
 
-  // Count TW/TWU/Rel Supp people from FF trucks as on-roster
+  // Count people on FF trucks who are NOT off-roster status as on-roster
+  // They're available to be placed on a truck
   const onRosterOnFFTrucks = trucks
     .filter((t) => isOffRosterTruck(t))
-    .reduce((sum, t) => sum + t.crew.filter((c) => {
-      const st = c.status?.toLowerCase().trim() || "";
-      return (st === "tw" || st === "twu" || st.includes("rel supp") || st.includes("rel support"));
-    }).length, 0);
+    .reduce((sum, t) => sum + t.crew.filter((c) => !isOffRosterStatus(c.status || "")).length, 0);
 
   const activeCrew = activeTrucks.reduce((sum, t) => sum + t.crew.length, 0) + onRosterOnFFTrucks;
   const totalCrew = activeCrew + offRosterMembers.length;

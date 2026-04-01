@@ -486,11 +486,8 @@ export default function DashboardPage() {
             for (const s of regularStations) {
               for (const t of s.trucks) {
                 if (isOffTruck(t)) {
-                  // TW/TWU/Rel Supp on FF trucks count as on roster
-                  onRoster += t.crew.filter((c) => {
-                    const st = c.status?.toLowerCase().trim() || "";
-                    return st === "tw" || st === "twu" || st.includes("rel supp") || st.includes("rel support");
-                  }).length;
+                  // Anyone on FF truck without an off-roster status counts as on roster
+                  onRoster += t.crew.filter((c) => !isOffStatus(c.status || "")).length;
                 } else {
                   onRoster += t.crew.filter((c) => !isOffStatus(c.status || "")).length;
                 }
