@@ -209,11 +209,13 @@ export default function CalendarPage() {
                       </div>
                     )}
 
-                    {/* Day number */}
-                    <div className={`absolute top-1 left-1.5 z-30 font-display text-base font-extrabold drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] ${
-                      isToday ? "text-white" : "text-white"
-                    }`}>
-                      {dateNum}
+                    {/* Day number — centered */}
+                    <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+                      <span className={`font-display text-2xl sm:text-3xl font-extrabold drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] ${
+                        isToday ? "text-white" : "text-white"
+                      }`}>
+                        {dateNum}
+                      </span>
                     </div>
 
                     {/* Day shift — top half */}
