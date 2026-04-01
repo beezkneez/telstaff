@@ -60,6 +60,8 @@ export default function DashboardPage() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [rotationInfo, setRotationInfo] = useState<RotationInfo | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Load user's home platoon and station
   useEffect(() => {
@@ -73,6 +75,7 @@ export default function DashboardPage() {
             setPlatoon(plt);
             setHomePlatoon(plt);
             setStation(data.profile.homeStation || 1);
+            setUserName(data.profile.name || "");
           } else {
             setPlatoon("1");
             setHomePlatoon("1");
@@ -124,6 +127,21 @@ export default function DashboardPage() {
         ? data
         : [data];
       setAllStations(stations);
+
+      // Auto-detect user's current station from roster
+      if (userName && platoon === homePlatoon) {
+        const lastName = userName.split(" ").pop()?.toLowerCase() || "";
+        for (const s of stations) {
+          for (const t of s.trucks) {
+            if (t.crew.some((c) => c.name?.toLowerCase().includes(lastName))) {
+              if (s.station !== station) {
+                setStation(s.station);
+              }
+              break;
+            }
+          }
+        }
+      }
 
       // Background prefetch other platoons
       const otherPlatoons = ["1", "2", "3", "4"].filter((p) => p !== platoon);
@@ -297,6 +315,26 @@ export default function DashboardPage() {
             onChange={(e) => setSelectedDate(e.target.value)}
             className="px-3 py-2 bg-surface border border-border font-mono text-[11px] tracking-wider text-foreground transition-colors focus:border-ember/50 cursor-pointer"
           />
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search name..."
+              className="pl-8 pr-3 py-2 bg-surface border border-border font-mono text-[11px] tracking-wider text-foreground transition-colors focus:border-ember/50 w-40"
+            />
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-foreground text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* View toggle */}
@@ -365,6 +403,8 @@ export default function DashboardPage() {
             <StationCard
               station={selectedStation.station}
               trucks={selectedStation.trucks}
+              highlightName={userName}
+              searchQuery={searchQuery}
             />
           </div>
         ) : (
@@ -376,12 +416,23 @@ export default function DashboardPage() {
         )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {regularStations.map((s, idx) => (
+          {(searchQuery
+            ? regularStations.filter((s) =>
+                s.trucks.some((t) =>
+                  t.crew.some((c) =>
+                    c.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                )
+              )
+            : regularStations
+          ).map((s, idx) => (
             <StationCard
               key={s.station}
               station={s.station}
               trucks={s.trucks}
               animationDelay={Math.min(idx * 50, 500)}
+              highlightName={userName}
+              searchQuery={searchQuery}
             />
           ))}
           {supportGroups.length > 0 && (

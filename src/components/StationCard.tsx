@@ -31,12 +31,16 @@ interface StationCardProps {
   station: number;
   trucks: TruckAssignment[];
   animationDelay?: number;
+  highlightName?: string;
+  searchQuery?: string;
 }
 
 export default function StationCard({
   station,
   trucks,
   animationDelay = 0,
+  highlightName = "",
+  searchQuery = "",
 }: StationCardProps) {
   const isOffRoster = (t: TruckAssignment) =>
     t.type === "OffRoster" || /^ff\s*\d/i.test(t.truck);
@@ -94,10 +98,18 @@ export default function StationCard({
 
               {/* Crew grid */}
               <div className="space-y-px">
-                {truck.crew.map((member, idx) => (
+                {truck.crew.map((member, idx) => {
+                  const nameLC = member.name?.toLowerCase() || "";
+                  const hlLC = highlightName?.toLowerCase() || "";
+                  const sqLC = searchQuery?.toLowerCase() || "";
+                  const isUser = hlLC && nameLC.includes(hlLC.split(" ").pop() || "");
+                  const isSearchMatch = sqLC && nameLC.includes(sqLC);
+                  return (
                   <div
                     key={idx}
-                    className="flex items-center justify-between py-1.5 px-2 hover:bg-surface-overlay/30 transition-colors group"
+                    className={`flex items-center justify-between py-1.5 px-2 hover:bg-surface-overlay/30 transition-colors group ${
+                      isUser ? "bg-ember/10 border-l-2 border-l-ember" : isSearchMatch ? "bg-amber/10 border-l-2 border-l-amber" : ""
+                    }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={`w-5 h-5 flex items-center justify-center font-mono text-[9px] font-bold border ${
@@ -136,7 +148,8 @@ export default function StationCard({
                       </span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
