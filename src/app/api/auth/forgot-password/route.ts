@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     data: { resetToken: token, resetTokenExpiry: expiry },
   });
 
-  const baseUrl = process.env.NEXTAUTH_URL || "https://telstaff-production.up.railway.app";
+  const baseUrl = process.env.NEXTAUTH_URL || "https://betterstaff.app";
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
   await sendPasswordResetEmail(email, resetUrl);
