@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off, getNext6Off } from "@/lib/rotation";
-import { getCallInLists, findMemberPosition, getPositionsAhead } from "@/lib/callin-list";
+import { getCallInList, findMemberOnList, getPositionsAhead as getDbPositionsAhead } from "@/lib/callin-db";
+import { getRecentHistory } from "@/lib/callin-db";
 import { predictOvertime, isNearStatHoliday } from "@/lib/prediction";
 import { calculateShortfall, type StaffingShortfall } from "@/lib/staffing-calc";
 
@@ -45,42 +46,57 @@ export async function GET(req: Request) {
     isWorking: getShiftInfo(date, p).type === "day" || getShiftInfo(date, p).type === "night",
   }));
 
-  // Get call-in list data
+  // Get call-in list from DB (falls back to Google Sheet if DB is empty)
   let callInData = null;
   try {
-    const lists = await getCallInLists();
-    const myList = lists.find((l) => l.platoon === userPlatoon);
+    const { members, currentUpPos } = await getCallInList(userPlatoon);
 
-    if (myList) {
-      // Match by last name only (sheet uses last names), within user's platoon
+    if (members.length > 0) {
+      // Match user by last name
       const nameParts = userName.trim().split(" ");
       const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
-      const position = findMemberPosition(myList, lastName);
+      const position = findMemberOnList(members, lastName);
 
-      const positionsAhead = position
-        ? getPositionsAhead(myList, position)
+      const positionsAhead = position !== null
+        ? getDbPositionsAhead(currentUpPos, position, members.length)
         : null;
 
+      const currentUpMember = members.find((m) => m.position === currentUpPos);
+
       callInData = {
-        currentUp: myList.currentUp,
-        totalMembers: myList.members.length,
+        currentUp: currentUpMember ? `${currentUpMember.lastName}${currentUpMember.firstName ? `, ${currentUpMember.firstName}` : ""}` : "Unknown",
+        totalMembers: members.length,
         userPosition: position,
         positionsAhead,
-        // Show nearby members on the list
-        nearbyMembers: position
-          ? myList.members
-              .filter(
-                (m) =>
-                  Math.abs(m.position - position) <= 5 ||
-                  (positionsAhead !== null &&
-                    Math.abs(
-                      getPositionsAhead(myList, m.position) -
-                        (positionsAhead ?? 0)
-                    ) <= 5)
-              )
+        nearbyMembers: position !== null
+          ? members
+              .filter((m) => {
+                const dist = getDbPositionsAhead(currentUpPos, m.position, members.length);
+                const userDist = positionsAhead ?? 0;
+                return Math.abs(dist - userDist) <= 5;
+              })
               .sort((a, b) => a.position - b.position)
-          : myList.members.slice(0, 15),
+              .map((m) => ({ position: m.position, name: `${m.lastName}${m.firstName ? `, ${m.firstName}` : ""}` }))
+          : members.slice(0, 15).map((m) => ({ position: m.position, name: `${m.lastName}${m.firstName ? `, ${m.firstName}` : ""}` })),
       };
+    } else {
+      // Fallback to Google Sheet
+      const { getCallInLists, findMemberPosition, getPositionsAhead } = await import("@/lib/callin-list");
+      const lists = await getCallInLists();
+      const myList = lists.find((l) => l.platoon === userPlatoon);
+      if (myList) {
+        const nameParts = userName.trim().split(" ");
+        const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+        const position = findMemberPosition(myList, lastName);
+        const positionsAhead = position ? getPositionsAhead(myList, position) : null;
+        callInData = {
+          currentUp: myList.currentUp,
+          totalMembers: myList.members.length,
+          userPosition: position,
+          positionsAhead,
+          nearbyMembers: myList.members.slice(0, 15),
+        };
+      }
     }
   } catch (error) {
     console.error("[overtime] Failed to fetch call-in list:", error);
@@ -120,6 +136,9 @@ export async function GET(req: Request) {
     const todayOtwp = todayOtwpEntries.length > 0
       ? todayOtwpEntries.reduce((s, o) => s + o.count, 0)
       : null;
+
+    // Get actual historical ratios from call-in DB
+    const recentHistoryData = await getRecentHistory(30);
 
     // Calculate historical average and trend from all OTWP data
     let historicalAvgPerShift: number | undefined;

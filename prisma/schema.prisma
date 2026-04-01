@@ -54,6 +54,44 @@ model AppSettings {
   minStaffing   Int     @default(216)
 }
 
+model CallInMember {
+  id            String @id @default(cuid())
+  platoon       String
+  position      Int    // order on the call-in list
+  lastName      String
+  firstName     String?
+  payrollNumber String? // 7-digit employee ID from Telestaff
+  active        Boolean @default(true)
+
+  @@unique([platoon, position])
+  @@index([platoon])
+  @@index([payrollNumber])
+}
+
+model CallInState {
+  id              String   @id @default(cuid())
+  platoon         String   @unique
+  currentUpPos    Int      // position of next person to be called
+  lastOtwpName    String?  // last OTWP person detected (furthest on list)
+  updatedAt       DateTime @default(now())
+}
+
+model CallInHistory {
+  id            String   @id @default(cuid())
+  date          DateTime @db.Date
+  platoon       String   // platoon that was ON SHIFT (needed the OT)
+  shift         String   // "day" or "night"
+  otwpCount     Int      // how many actually worked OT
+  namesDialed   Int?     // estimated names called (from list range)
+  firstOnList   String?  // first OTWP person on list (closest to start)
+  lastOnList    String?  // last OTWP person on list (furthest from start)
+  ratio         Float?   // namesDialed / otwpCount
+  createdAt     DateTime @default(now())
+
+  @@unique([date, platoon, shift])
+  @@index([date])
+}
+
 model OTWPCache {
   id                String   @id @default(cuid())
   date              DateTime @db.Date
