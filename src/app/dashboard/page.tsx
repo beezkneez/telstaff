@@ -129,15 +129,13 @@ export default function DashboardPage() {
       setAllStations(stations);
 
       // Auto-detect user's current station from roster
-      if (userName && platoon === homePlatoon) {
+      if (userName) {
         const lastName = userName.split(" ").pop()?.toLowerCase() || "";
         for (const s of stations) {
           for (const t of s.trucks) {
             if (t.crew.some((c) => c.name?.toLowerCase().includes(lastName))) {
-              if (s.station !== station) {
-                setStation(s.station);
-              }
-              break;
+              setStation(s.station);
+              return; // found it, stop searching
             }
           }
         }
@@ -319,7 +317,10 @@ export default function DashboardPage() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (e.target.value) setViewMode("all-stations");
+              }}
               placeholder="Search name..."
               className="pl-8 pr-3 py-2 bg-surface border border-border font-mono text-[11px] tracking-wider text-foreground transition-colors focus:border-ember/50 w-40"
             />
