@@ -211,9 +211,7 @@ export default function CalendarPage() {
 
                     {/* Day number — centered */}
                     <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
-                      <span className={`font-display text-2xl sm:text-3xl font-extrabold drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] ${
-                        isToday ? "text-white" : "text-white"
-                      }`}>
+                      <span className="font-display text-2xl sm:text-3xl font-extrabold text-black">
                         {dateNum}
                       </span>
                     </div>
