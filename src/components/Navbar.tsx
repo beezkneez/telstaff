@@ -29,6 +29,7 @@ export default function Navbar() {
             {[
               { href: "/dashboard", label: "OPS" },
               { href: "/dashboard/overtime", label: "OVERTIME" },
+              { href: "/dashboard/calendar", label: "CALENDAR" },
               { href: "/dashboard/paybacks", label: "PAYBACKS" },
               { href: "/profile", label: "PROFILE" },
               ...((session?.user as { isAdmin?: boolean })?.isAdmin
