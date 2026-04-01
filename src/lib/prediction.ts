@@ -250,8 +250,9 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     explanation += ` Note: ${stat.holiday} is ${stat.daysAway} days away — this typically reduces bookoffs and overtime demand around these dates.`;
   }
 
-  // Build scenarios at different acceptance rates
-  const holesPerShift = todayHoles !== null ? todayHoles : (last6OffTotal > 0 ? Math.round(last6OffTotal / 8) : 8);
+  // Build scenarios based on TONIGHT'S actual holes (most important)
+  // Falls back to average from last 6-off if no current hole data
+  const currentHoles = todayHoles !== null ? todayHoles : (last6OffTotal > 0 ? Math.round(last6OffTotal / 8) : 8);
   const scenarioRates = [
     { label: "High acceptance", rate: "1 in 2", ratio: 2 },
     { label: "Good acceptance (weekday)", rate: "1 in 3", ratio: 3 },
@@ -259,18 +260,18 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     { label: "Low acceptance (weekend)", rate: "1 in 5", ratio: 5 },
     { label: "Very low (Friday night)", rate: "1 in 6", ratio: 6 },
     { label: "Terrible (long weekend)", rate: "1 in 7", ratio: 7 },
+    { label: "Extreme", rate: "1 in 8", ratio: 8 },
   ];
 
   const scenarios: Scenario[] = scenarioRates.map((sr) => {
-    const namesPerShift = holesPerShift * sr.ratio;
-    // Over a 6-off: 4 eligible days × 2 shifts = 8 shift periods
-    const namesOver6Off = last6OffTotal > 0 ? last6OffTotal * sr.ratio : namesPerShift * 8;
-    const margin = namesOver6Off - positionsAhead;
+    // Tonight's holes × ratio = names they'll call THIS SHIFT
+    const namesPerShift = currentHoles * sr.ratio;
+    const margin = namesPerShift - positionsAhead;
     return {
       label: sr.label,
       acceptRate: sr.rate,
       namesCalledPerShift: namesPerShift,
-      namesCalledOver6Off: namesOver6Off,
+      namesCalledOver6Off: namesPerShift, // per-shift focused
       getsCalled: margin > 0,
       margin,
     };

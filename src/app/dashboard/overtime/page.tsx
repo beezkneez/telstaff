@@ -184,9 +184,14 @@ export default function OvertimePage() {
               {/* Scenario Analysis */}
               {data.prediction.scenarios && data.prediction.scenarios.length > 0 && (
                 <div className="mt-4 border border-border-subtle">
-                  <div className="px-3 py-2 bg-surface-raised/50 border-b border-border-subtle">
+                  <div className="px-3 py-2 bg-surface-raised/50 border-b border-border-subtle flex items-center justify-between">
                     <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
-                      What If — Acceptance Rate Scenarios
+                      What If — Tonight&apos;s Shift
+                    </span>
+                    <span className="font-mono text-[10px] text-ember">
+                      {data.prediction.scenarios[0]?.namesCalledPerShift
+                        ? `${Math.round(data.prediction.scenarios[0].namesCalledPerShift / 2)} holes to fill`
+                        : ""}
                     </span>
                   </div>
                   <div className="divide-y divide-border-subtle">
@@ -202,7 +207,7 @@ export default function OvertimePage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                          <span className="font-mono text-[10px] text-muted">~{sc.namesCalledOver6Off} names</span>
+                          <span className="font-mono text-[10px] text-muted">{sc.namesCalledPerShift} names</span>
                           {sc.getsCalled ? (
                             <span className="font-mono text-[11px] text-ember font-bold">YES (+{sc.margin})</span>
                           ) : (
@@ -214,15 +219,18 @@ export default function OvertimePage() {
                   </div>
                   <div className="px-3 py-2 bg-surface-raised/30">
                     <p className="font-mono text-[10px] text-muted leading-relaxed">
-                      You&apos;re {data.prediction.positionsAhead} away on the list.
+                      You&apos;re {data.prediction.positionsAhead} away. Tonight has {Math.round(data.prediction.scenarios[0]?.namesCalledPerShift / 2) || "?"} holes to fill.
                       {data.prediction.scenarios.filter((s) => s.getsCalled).length === 0
-                        ? " None of these scenarios reach you — very unlikely to get called."
+                        ? " Even at the worst acceptance rate, they won't reach you tonight."
                         : data.prediction.scenarios.filter((s) => s.getsCalled).length === data.prediction.scenarios.length
-                          ? " Every scenario reaches you — expect the call."
+                          ? " Even at the best acceptance rate, they'll reach you. Expect the call."
                           : ` You get called in ${data.prediction.scenarios.filter((s) => s.getsCalled).length} of ${data.prediction.scenarios.length} scenarios. ${
-                              data.prediction.scenarios.find((s) => s.getsCalled)
-                                ? `The tipping point is around ${data.prediction.scenarios.find((s) => s.getsCalled)?.acceptRate} acceptance — if fewer people than that accept, they'll reach you.`
-                                : ""
+                              (() => {
+                                const first = data.prediction.scenarios.find((s) => s.getsCalled);
+                                return first
+                                  ? `The tipping point is ${first.acceptRate} — if only ${first.acceptRate.split("in ")[1]} out of every ${first.acceptRate.split("in ")[1]} people accept, they'll just barely reach you at position ${data.prediction.positionsAhead}.`
+                                  : "";
+                              })()
                             }`
                       }
                     </p>
