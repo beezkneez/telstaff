@@ -396,9 +396,9 @@ export default function OvertimePage() {
                         {!day.eligible && (
                           <span className="font-mono text-[10px] text-muted tracking-wider">NOT ELIGIBLE</span>
                         )}
-                        {day.statHoliday && (
+                        {day.statHoliday && day.statDaysAway === 0 && (
                           <span className="font-mono text-[10px] tracking-wider px-1.5 py-0.5 bg-amber/10 text-amber border border-amber/20">
-                            {day.statHoliday}{day.statDaysAway === 0 ? "" : ` (${day.statDaysAway}d away)`}
+                            {day.statHoliday}
                           </span>
                         )}
                       </div>
