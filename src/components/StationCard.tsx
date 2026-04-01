@@ -47,6 +47,7 @@ export default function StationCard({
 
   const isOffRosterStatus = (status: string) => {
     const st = status?.toLowerCase() || "";
+    if (st.includes("tw") && !st.includes("tnw") && !st.includes("otwp")) return false; // TW stays on roster
     return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick");
   };
 
@@ -69,7 +70,15 @@ export default function StationCard({
     }
   }
 
-  const activeCrew = activeTrucks.reduce((sum, t) => sum + t.crew.length, 0);
+  // Count TW people from FF trucks as on-roster
+  const twOnFFTrucks = trucks
+    .filter((t) => isOffRosterTruck(t))
+    .reduce((sum, t) => sum + t.crew.filter((c) => {
+      const st = c.status?.toLowerCase() || "";
+      return st.includes("tw") && !st.includes("tnw") && !st.includes("otwp");
+    }).length, 0);
+
+  const activeCrew = activeTrucks.reduce((sum, t) => sum + t.crew.length, 0) + twOnFFTrucks;
   const totalCrew = activeCrew + offRosterMembers.length;
 
   return (
