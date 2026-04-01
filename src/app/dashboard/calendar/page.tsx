@@ -144,7 +144,7 @@ export default function CalendarPage() {
           </div>
         ))}
         <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 border-2 border-white" />
+          <span className="w-3 h-3 border-2 border-black bg-surface" />
           <span className="font-mono text-[10px] text-muted">Stat</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -196,15 +196,15 @@ export default function CalendarPage() {
                   >
                     {/* Stat holiday border */}
                     {isStat && (
-                      <div className="absolute inset-[3px] border-[3px] border-white z-20 pointer-events-none" />
+                      <div className="absolute inset-[3px] border-[3px] border-black z-20 pointer-events-none" />
                     )}
 
                     {/* Payday X overlay */}
                     {payday && (
                       <div className="absolute inset-0 z-10 pointer-events-none">
                         <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                          <line x1="0" y1="0" x2="100" y2="100" stroke="white" strokeWidth="2" strokeOpacity="0.5" />
-                          <line x1="100" y1="0" x2="0" y2="100" stroke="white" strokeWidth="2" strokeOpacity="0.5" />
+                          <line x1="0" y1="0" x2="100" y2="100" stroke="black" strokeWidth="2.5" strokeOpacity="0.7" />
+                          <line x1="100" y1="0" x2="0" y2="100" stroke="black" strokeWidth="2.5" strokeOpacity="0.7" />
                         </svg>
                       </div>
                     )}
