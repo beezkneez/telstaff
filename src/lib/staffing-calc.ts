@@ -77,7 +77,7 @@ export function calculateShortfall(
         // TW/TWU stay on roster
         if (st === "tw" || st === "twu") return true;
         // These are off roster
-        if (st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa")) return false;
+        if (st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa") || st.includes("sur")) return false;
         return true;
       });
       const captains = activeCrew.filter((c) => isCaptainRank(c.rank || ""));

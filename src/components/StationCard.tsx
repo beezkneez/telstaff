@@ -50,7 +50,7 @@ export default function StationCard({
   const isOffRosterStatus = (status: string) => {
     const st = status?.toLowerCase().trim() || "";
     if (st === "tw" || st === "twu") return false; // TW/TWU stay on roster
-    return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa");
+    return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa") || st.includes("sur");
   };
 
   // Separate off-roster crew from active trucks
@@ -145,6 +145,7 @@ export default function StationCard({
                   const isSA = st.includes(".sa");
                   const isATI = st.includes("ati");
                   const isIns = st.includes("ins ");
+                  const isSUR = st.includes("sur");
                   const statusBg = isUser ? "bg-ember/10 border-l-2 border-l-ember"
                     : isSearchMatch ? "bg-amber/10 border-l-2 border-l-amber"
                     : isVac ? "bg-yellow-500/8"
@@ -152,6 +153,7 @@ export default function StationCard({
                     : isTW ? "bg-fuchsia-500/8"
                     : isLieu ? "bg-green-500/8"
                     : isSA ? "bg-emerald-900/20"
+                    : isSUR ? "bg-purple-950/30"
                     : isATI ? "bg-purple-900/20"
                     : isIns ? "bg-orange-900/20"
                     : "";
@@ -188,12 +190,14 @@ export default function StationCard({
                                   : isSA
                                     ? "bg-emerald-900/30 text-emerald-400 border-emerald-500/20"
                                     : isATI
-                                      ? "bg-purple-900/30 text-purple-400 border-purple-500/20"
+                                      ? isSUR
+                                        ? "bg-purple-950/40 text-purple-300 border-purple-400/20"
+                                        : "bg-purple-900/30 text-purple-400 border-purple-500/20"
                                       : isIns
                                         ? "bg-orange-900/30 text-orange-400 border-orange-500/20"
                                         : "bg-surface-overlay text-muted border-border"
                         }`}>
-                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : isSA ? "SA" : isATI ? "ATI" : isIns ? "INS" : member.status}
+                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : isSA ? "SA" : isSUR ? "SUR" : isATI ? "ATI" : isIns ? "INS" : member.status}
                         </span>
                       )}
                       <span className={`font-mono text-[11px] tracking-wider uppercase ${
@@ -231,11 +235,12 @@ export default function StationCard({
                 const isTNW = st.includes("tnw");
                 const isLieu = st.includes("lieuo");
                 const isSA = st.includes(".sa");
+                const isSUR = st.includes("sur");
                 return (
                   <div
                     key={idx}
                     className={`flex items-center justify-between py-1.5 px-2 ${
-                      isVac ? "bg-yellow-500/8" : isTNW ? "bg-fuchsia-500/8" : isLieu ? "bg-green-500/8" : isSA ? "bg-emerald-900/20" : ""
+                      isVac ? "bg-yellow-500/8" : isTNW ? "bg-fuchsia-500/8" : isSUR ? "bg-purple-950/30" : isLieu ? "bg-green-500/8" : isSA ? "bg-emerald-900/20" : ""
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -247,14 +252,15 @@ export default function StationCard({
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      {(isVac || isTNW || isLieu || isSA) && (
+                      {(isVac || isTNW || isLieu || isSA || isSUR) && (
                         <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 border ${
                           isVac ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
                             : isTNW ? "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20"
+                            : isSUR ? "bg-purple-950/40 text-purple-300 border-purple-400/20"
                             : isSA ? "bg-emerald-900/30 text-emerald-400 border-emerald-500/20"
                             : "bg-green-500/10 text-green-400 border-green-500/20"
                         }`}>
-                          {isVac ? "VAC" : isTNW ? "TNW" : isSA ? "SA" : "LIEU"}
+                          {isVac ? "VAC" : isTNW ? "TNW" : isSUR ? "SUR" : isSA ? "SA" : "LIEU"}
                         </span>
                       )}
                       <span className="font-mono text-[11px] tracking-wider uppercase text-muted">

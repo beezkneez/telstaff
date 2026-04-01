@@ -454,7 +454,7 @@ export default function DashboardPage() {
             const isOffStatus = (status: string) => {
               const st = status?.toLowerCase().trim() || "";
               if (st === "tw" || st === "twu") return false;
-              return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa");
+              return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa") || st.includes("sur");
             };
             // Count ops crew on active trucks excluding off-roster statuses
             let onRoster = 0;
