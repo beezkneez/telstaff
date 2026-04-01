@@ -139,15 +139,34 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-muted mt-6 animate-fade-slide-up delay-300">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/register"
-              className="text-ember hover:text-ember-glow transition-colors font-medium"
-            >
-              Create one
-            </Link>
-          </p>
+          <div className="text-center mt-6 space-y-2 animate-fade-slide-up delay-300">
+            <p className="text-sm text-muted">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!email) { setError("Enter your email first"); return; }
+                  const res = await fetch("/api/auth/forgot-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email }),
+                  });
+                  if (res.ok) setError("If that email exists, a reset link has been sent.");
+                }}
+                className="text-ember hover:text-ember-glow transition-colors font-medium text-sm"
+              >
+                Forgot password?
+              </button>
+            </p>
+            <p className="text-sm text-muted">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/register"
+                className="text-ember hover:text-ember-glow transition-colors font-medium"
+              >
+                Create one
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

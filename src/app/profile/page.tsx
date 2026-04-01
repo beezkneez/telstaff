@@ -3,6 +3,75 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
+function ChangePasswordSection() {
+  const [current, setCurrent] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwError, setPwError] = useState("");
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError("");
+    if (newPw !== confirm) { setPwError("Passwords don't match"); return; }
+    if (newPw.length < 8) { setPwError("Minimum 8 characters"); return; }
+
+    setPwSaving(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: current, newPassword: newPw }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setPwError(data.error || "Failed");
+      } else {
+        setPwSaved(true);
+        setCurrent(""); setNewPw(""); setConfirm("");
+        setTimeout(() => setPwSaved(false), 3000);
+      }
+    } catch { setPwError("Something went wrong"); }
+    finally { setPwSaving(false); }
+  }
+
+  return (
+    <div className="rounded-xl bg-surface border border-border-subtle overflow-hidden mb-6 animate-fade-slide-up delay-250">
+      <div className="px-5 py-4 border-b border-border-subtle">
+        <h2 className="font-display text-sm font-bold tracking-wider text-muted uppercase">
+          Change Password
+        </h2>
+      </div>
+      <form onSubmit={handleChangePassword} className="p-5 space-y-4">
+        {pwError && <div className="p-3 bg-alert-red/10 border border-alert-red/20 text-alert-red font-mono text-sm">{pwError}</div>}
+        <div>
+          <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Current Password</label>
+          <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} required
+            className="w-full px-4 py-3 bg-background border border-border text-foreground placeholder:text-muted/50 focus:border-ember/50" placeholder="Enter current password" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">New Password</label>
+          <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} required minLength={8}
+            className="w-full px-4 py-3 bg-background border border-border text-foreground placeholder:text-muted/50 focus:border-ember/50" placeholder="Min 8 characters" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Confirm New Password</label>
+          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required
+            className="w-full px-4 py-3 bg-background border border-border text-foreground placeholder:text-muted/50 focus:border-ember/50" placeholder="Confirm new password" />
+        </div>
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={pwSaving}
+            className="px-6 py-2.5 bg-ember hover:bg-ember-glow text-white text-sm font-semibold transition-all hover:shadow-[0_0_20px_rgba(255,74,28,0.3)] disabled:opacity-50">
+            {pwSaving ? "Changing..." : "Change Password"}
+          </button>
+          {pwSaved && <span className="font-mono text-[10px] text-success tracking-wider animate-fade-in uppercase">Password updated</span>}
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { data: session } = useSession();
   const [telestaff, setTelestaff] = useState({ username: "", password: "" });
@@ -168,6 +237,9 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Change Password */}
+      <ChangePasswordSection />
 
       {/* Telestaff credentials */}
       <div className="rounded-xl bg-surface border border-border-subtle overflow-hidden animate-fade-slide-up delay-300">

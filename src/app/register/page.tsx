@@ -124,8 +124,11 @@ export default function RegisterPage() {
                 onChange={(e) => update("email", e.target.value)}
                 required
                 className="w-full px-4 py-3 rounded-md bg-surface border border-border text-foreground placeholder:text-muted/50 transition-colors focus:border-ember/50"
-                placeholder="you@edmonton.ca"
+                placeholder="you@email.com"
               />
+              <p className="font-mono text-[10px] text-muted mt-1">
+                Any email works — doesn&apos;t need to be your city email
+              </p>
             </div>
 
             <div>
