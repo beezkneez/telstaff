@@ -130,12 +130,16 @@ async function parseRosterPage(
     type Marker =
       | { type: "district"; num: number; el: Element }
       | { type: "station"; num: number; el: Element }
+      | { type: "support"; name: string; el: Element }
       | { type: "truck"; name: string; phone: string; el: Element }
       | { type: "crew"; name: string; rank: string; quals: string; status: string; el: Element };
 
     const markers: Marker[] = [];
 
-    // Parse Districts and Stations from .organizationName
+    // Support staff section names
+    const SUPPORT_SECTIONS = ["ecs", "fire investigations", "investigations"];
+
+    // Parse Districts, Stations, and Support sections from .organizationName
     allOrgNames.forEach((span) => {
       const text = span.textContent?.trim() || "";
       const distMatch = text.match(/^District\s+(\d+)$/i);
@@ -145,6 +149,8 @@ async function parseRosterPage(
         markers.push({ type: "district", num: parseInt(distMatch[1]), el: span });
       } else if (stnMatch) {
         markers.push({ type: "station", num: parseInt(stnMatch[1]), el: span });
+      } else if (SUPPORT_SECTIONS.includes(text.toLowerCase())) {
+        markers.push({ type: "support", name: text, el: span });
       }
     });
 
@@ -209,9 +215,28 @@ async function parseRosterPage(
     let currentStation: typeof results[0] | null = null;
     let currentTruck: typeof results[0]["trucks"][0] | null = null;
 
+    let supportStationNum = 900; // Support sections get 900+
+
     for (const marker of markers) {
       if (marker.type === "district") {
         currentDistrict = marker.num;
+      } else if (marker.type === "support") {
+        // Create a special "station" for this support section
+        currentStation = {
+          station: supportStationNum++,
+          district: 0,
+          platoon: platoonId,
+          date: "",
+          trucks: [{
+            truck: marker.name,
+            type: "Other",
+            phoneNumber: "",
+            crew: [],
+          }],
+          supportSection: marker.name,
+        } as typeof results[0] & { supportSection: string };
+        results.push(currentStation);
+        currentTruck = currentStation.trucks[0];
       } else if (marker.type === "station") {
         currentStation = {
           station: marker.num,

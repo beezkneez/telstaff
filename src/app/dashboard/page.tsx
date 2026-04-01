@@ -209,15 +209,32 @@ export default function DashboardPage() {
     .filter((s) => s.station >= 1 && s.station <= 31)
     .sort((a, b) => a.station - b.station);
 
-  // Collect all support staff into groups
-  const supportStaffMap = new Map<string, { name: string; rank: string; position: string }[]>();
+  // Collect all support staff into groups:
+  // 1. From support sections (station 900+)
+  // 2. From rank-based detection on regular stations
+  const supportStaffMap = new Map<string, { name: string; rank: string; position: string; status?: string }[]>();
   for (const s of allStations) {
+    // Support sections (ECS, Fire Investigations) — station 900+
+    if (s.station >= 900) {
+      const sectionName = s.trucks[0]?.truck || "Other";
+      const group = sectionName.toLowerCase().includes("ecs") ? "Dispatch"
+        : sectionName.toLowerCase().includes("investigation") ? "Investigations"
+        : sectionName;
+      if (!supportStaffMap.has(group)) supportStaffMap.set(group, []);
+      for (const t of s.trucks) {
+        for (const c of t.crew) {
+          supportStaffMap.get(group)!.push({ name: c.name, rank: c.rank || "", position: c.position || "", status: c.status });
+        }
+      }
+      continue;
+    }
+    // Rank-based detection on regular stations
     for (const t of s.trucks) {
       for (const c of t.crew) {
         if (isSupportStaff(c.rank || "")) {
           const group = getSupportGroup(c.rank || "");
           if (!supportStaffMap.has(group)) supportStaffMap.set(group, []);
-          supportStaffMap.get(group)!.push({ name: c.name, rank: c.rank || "", position: c.position || "" });
+          supportStaffMap.get(group)!.push({ name: c.name, rank: c.rank || "", position: c.position || "", status: c.status });
         }
       }
     }
