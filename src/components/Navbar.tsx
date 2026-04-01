@@ -80,6 +80,7 @@ export default function Navbar() {
             {[
               { href: "/dashboard", label: "Operations" },
               { href: "/dashboard/overtime", label: "Overtime" },
+              { href: "/dashboard/calendar", label: "Calendar" },
               { href: "/dashboard/paybacks", label: "Paybacks" },
               { href: "/profile", label: "Profile" },
               ...((session?.user as { isAdmin?: boolean })?.isAdmin
