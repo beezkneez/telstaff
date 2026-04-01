@@ -42,13 +42,35 @@ export default function StationCard({
   highlightName = "",
   searchQuery = "",
 }: StationCardProps) {
-  const isOffRoster = (t: TruckAssignment) =>
+  const isOffRosterTruck = (t: TruckAssignment) =>
     t.type === "OffRoster" || /^ff\s*\d/i.test(t.truck);
-  const activeTrucks = trucks.filter((t) => !isOffRoster(t));
-  const offRosterTrucks = trucks.filter((t) => isOffRoster(t));
+
+  const isOffRosterStatus = (status: string) => {
+    const st = status?.toLowerCase() || "";
+    return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick");
+  };
+
+  // Separate off-roster crew from active trucks
+  const activeTrucks = trucks
+    .filter((t) => !isOffRosterTruck(t))
+    .map((t) => ({
+      ...t,
+      crew: t.crew.filter((c) => !isOffRosterStatus(c.status || "")),
+    }))
+    .filter((t) => t.crew.length > 0);
+
+  // Collect all off-roster people: from FF trucks + status-based
+  const offRosterMembers: CrewMember[] = [];
+  for (const t of trucks) {
+    if (isOffRosterTruck(t)) {
+      offRosterMembers.push(...t.crew);
+    } else {
+      offRosterMembers.push(...t.crew.filter((c) => isOffRosterStatus(c.status || "")));
+    }
+  }
+
   const activeCrew = activeTrucks.reduce((sum, t) => sum + t.crew.length, 0);
-  const offRosterCrew = offRosterTrucks.reduce((sum, t) => sum + t.crew.length, 0);
-  const totalCrew = activeCrew + offRosterCrew;
+  const totalCrew = activeCrew + offRosterMembers.length;
 
   return (
     <div
@@ -67,7 +89,7 @@ export default function StationCard({
                 STN-{String(station).padStart(2, "0")}
               </h3>
               <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
-                {activeTrucks.length} {activeTrucks.length === 1 ? "unit" : "units"} // {activeCrew}{offRosterCrew > 0 ? `/${totalCrew}` : ""} personnel
+                {activeTrucks.length} {activeTrucks.length === 1 ? "unit" : "units"} // {activeCrew}{offRosterMembers.length > 0 ? `/${totalCrew}` : ""} personnel
               </p>
             </div>
           </div>
@@ -171,20 +193,26 @@ export default function StationCard({
       </div>
 
       {/* Off Roster */}
-      {offRosterTrucks.length > 0 && (
+      {offRosterMembers.length > 0 && (
         <div className="border-t border-border">
           <div className="px-4 py-2 bg-surface-overlay/20 border-b border-border-subtle">
             <span className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase">
-              Off Roster — {offRosterCrew} personnel
+              Off Roster — {offRosterMembers.length} personnel
             </span>
           </div>
-          <div className="px-4 py-3 opacity-60">
+          <div className="px-4 py-3">
             <div className="space-y-px">
-              {offRosterTrucks.flatMap((truck) =>
-                truck.crew.map((member, idx) => (
+              {offRosterMembers.map((member, idx) => {
+                const st = member.status?.toLowerCase() || "";
+                const isVac = st.includes("vac");
+                const isTNW = st.includes("tnw");
+                const isLieu = st.includes("lieuo");
+                return (
                   <div
-                    key={`${truck.truck}-${idx}`}
-                    className="flex items-center justify-between py-1.5 px-2"
+                    key={idx}
+                    className={`flex items-center justify-between py-1.5 px-2 ${
+                      isVac ? "bg-yellow-500/8" : isTNW ? "bg-fuchsia-500/8" : isLieu ? "bg-green-500/8" : ""
+                    }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-5 h-5 flex items-center justify-center font-mono text-[9px] font-bold bg-surface-overlay border border-border text-muted">
@@ -194,12 +222,23 @@ export default function StationCard({
                         {member.name}
                       </span>
                     </div>
-                    <span className="font-mono text-[11px] tracking-wider uppercase text-muted">
-                      {member.rank?.replace(" Hz3", "").replace(" Pump,Hz3", "")}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      {(isVac || isTNW || isLieu) && (
+                        <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 border ${
+                          isVac ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                            : isTNW ? "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20"
+                            : "bg-green-500/10 text-green-400 border-green-500/20"
+                        }`}>
+                          {isVac ? "VAC" : isTNW ? "TNW" : "LIEU"}
+                        </span>
+                      )}
+                      <span className="font-mono text-[11px] tracking-wider uppercase text-muted">
+                        {member.rank?.replace(" Hz3", "").replace(" Pump,Hz3", "")}
+                      </span>
+                    </div>
                   </div>
-                ))
-              )}
+                );
+              })}
             </div>
           </div>
         </div>
