@@ -201,7 +201,7 @@ export default function StationCard({
                                           ? "bg-sky-900/30 text-sky-400 border-sky-500/20"
                                           : "bg-surface-overlay text-muted border-border"
                         }`}>
-                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? "TW" : isLieu ? "LIEU" : isSA ? "SA" : isSUR ? "SUR" : isATI ? "ATI" : isIns ? "INS" : isRelSupp ? "REL" : member.status}
+                          {isVac ? "VAC" : isTNW ? "TNW" : isTW ? (st === "twu" ? "TWU" : "TW") : isLieu ? "LIEU" : isSA ? "SA" : isSUR ? "SUR" : isATI ? "ATI" : isIns ? "INS" : isRelSupp ? "REL" : member.status}
                         </span>
                       )}
                       <span className={`font-mono text-[11px] tracking-wider uppercase ${
