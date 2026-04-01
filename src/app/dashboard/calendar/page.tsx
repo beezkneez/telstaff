@@ -133,7 +133,7 @@ export default function CalendarPage() {
             <div key={wi} className="grid grid-cols-7">
               {week.map((day, di) => {
                 if (!day) {
-                  return <div key={di} className="h-[72px] bg-surface/20 border-r border-b border-border-subtle last:border-r-0" />;
+                  return <div key={di} className="h-[72px] bg-surface/20 border-r-2 border-b-2 border-background last:border-r-0" />;
                 }
 
                 const dateNum = parseInt(day.date.split("-")[2]);
@@ -144,13 +144,13 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={di}
-                    className={`h-[72px] flex flex-col border-r border-b border-border-subtle last:border-r-0 overflow-hidden relative ${
+                    className={`h-[72px] flex flex-col border-r-2 border-b-2 border-background last:border-r-0 overflow-hidden relative ${
                       isToday ? "ring-2 ring-ember ring-inset" : ""
                     }`}
                   >
                     {/* Day number */}
-                    <div className={`absolute top-0.5 left-1 z-10 font-mono text-[11px] font-bold ${
-                      isToday ? "text-ember" : "text-foreground/70"
+                    <div className={`absolute top-0.5 left-1 z-10 font-mono text-[11px] font-extrabold drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${
+                      isToday ? "text-white" : "text-white/90"
                     }`}>
                       {dateNum}
                     </div>
@@ -160,17 +160,20 @@ export default function CalendarPage() {
                       className="flex-1"
                       style={{
                         backgroundColor: dayPlatoon
-                          ? `color-mix(in srgb, ${PLATOON_COLORS[dayPlatoon]} 35%, var(--background))`
+                          ? PLATOON_COLORS[dayPlatoon]
                           : "var(--surface)",
                       }}
                     />
+
+                    {/* Separator */}
+                    <div className="h-[2px] bg-background" />
 
                     {/* Night shift — bottom half */}
                     <div
                       className="flex-1"
                       style={{
                         backgroundColor: nightPlatoon
-                          ? `color-mix(in srgb, ${PLATOON_COLORS[nightPlatoon]} 25%, var(--background))`
+                          ? PLATOON_COLORS[nightPlatoon]
                           : "var(--surface)",
                       }}
                     />
