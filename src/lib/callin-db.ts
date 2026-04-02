@@ -135,12 +135,31 @@ export async function updateFromOTWP(
   const state = await prisma.callInState.findUnique({ where: { platoon } });
   const currentUpPos = state?.currentUpPos || 1;
 
-  // Match OTWP names to list positions
+  // Match OTWP names to list positions using first + last name
   const matchedPositions: number[] = [];
   for (const otwpName of otwpNames) {
-    // Extract last name from "LastName, FirstName ..."
-    const lastName = otwpName.split(",")[0].trim().toUpperCase();
-    const member = members.find((m) => m.lastName.toUpperCase() === lastName);
+    // OTWP format: "LastName, FirstName PositionCode MiddleInit. (quals)"
+    const parts = otwpName.split(",");
+    const lastName = parts[0].trim().toUpperCase();
+    const firstNameRaw = parts[1]?.trim().split(/\s+/)[0] || ""; // just first word after comma
+    const firstName = firstNameRaw.toUpperCase();
+
+    // Try exact first + last match first
+    let member = members.find((m) =>
+      m.lastName.toUpperCase() === lastName &&
+      m.firstName?.toUpperCase() === firstName
+    );
+
+    // Fall back to last name only if no first name match (and no duplicates)
+    if (!member) {
+      const lastNameMatches = members.filter((m) => m.lastName.toUpperCase() === lastName);
+      if (lastNameMatches.length === 1) {
+        member = lastNameMatches[0];
+      } else if (lastNameMatches.length > 1) {
+        console.log(`[callin-db] Duplicate last name "${lastName}" — skipping without first name match`);
+      }
+    }
+
     if (member) {
       matchedPositions.push(member.position);
     }
