@@ -42,6 +42,7 @@ interface OvertimeData {
     scenarios: { label: string; acceptRate: string; namesCalledPerShift: number; namesCalledOver6Off: number; getsCalled: boolean; margin: number }[];
     factors: { name: string; value: string; impact: string }[];
   } | null;
+  dataStale: boolean;
   shortfalls: {
     date: string;
     platoon: string;
@@ -132,6 +133,35 @@ export default function OvertimePage() {
         </div>
       ) : data ? (
         <div className="space-y-4">
+          {/* Stale data warning */}
+          {data.dataStale && (
+            <div className="flex items-center justify-between p-3 bg-amber/5 border border-amber/20 animate-fade-slide-up">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-amber" />
+                <span className="font-mono text-xs text-amber">Staffing data may be outdated — last scraped 4+ hours ago</span>
+              </div>
+              <button
+                onClick={async () => {
+                  setLoading(true);
+                  // Trigger fresh scrape for upcoming dates
+                  await fetch("/api/stations/refresh", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ platoon: data.onShift.dayShift || "1", date: selectedDate }),
+                  });
+                  // Reload overtime data
+                  const res = await fetch(`/api/overtime?date=${selectedDate}`);
+                  const d = await res.json();
+                  setData(d);
+                  setLoading(false);
+                }}
+                className="px-3 py-1 font-mono text-[10px] tracking-wider uppercase bg-amber/20 border border-amber/30 text-amber hover:bg-amber/30 transition-all"
+              >
+                Refresh Now
+              </button>
+            </div>
+          )}
+
           {/* Your Status */}
           <div className="bg-surface border border-border p-5 animate-fade-slide-up">
             <div className="flex items-center justify-between mb-4">

@@ -257,14 +257,16 @@ export async function GET(req: Request) {
   });
 
   // Calculate staffing shortfalls for NEXT 6-off eligible days
+  // Check if data is stale (>4 hours old) and flag for refresh
   const shortfalls: StaffingShortfall[] = [];
+  let dataStale = false;
+  const staleThreshold = 4 * 60 * 60 * 1000; // 4 hours
   const allEligibleDetails = [...sixOffDetails, ...next6OffDetails];
   try {
     for (const detail of allEligibleDetails) {
       if (!detail.eligible) continue;
       const dateObj = new Date(detail.date + "T00:00:00Z");
 
-      // Check each on-shift platoon's roster
       for (const shiftType of ["day", "night"] as const) {
         const shiftPlatoon = shiftType === "day" ? detail.dayShiftPlatoon : detail.nightShiftPlatoon;
         if (!shiftPlatoon) continue;
@@ -275,11 +277,20 @@ export async function GET(req: Request) {
         });
 
         if (cached.length > 0) {
-          const stations = cached.map((c) => c.data as unknown as { station: number; trucks: { truck: string; type: string; crew: { name: string; rank: string }[] }[] });
+          // Check staleness
+          const oldestScrape = cached.reduce((oldest, c) =>
+            c.scrapedAt < oldest ? c.scrapedAt : oldest, cached[0].scrapedAt);
+          if (Date.now() - oldestScrape.getTime() > staleThreshold) {
+            dataStale = true;
+          }
+
+          const stations = cached.map((c) => c.data as unknown as { station: number; trucks: { truck: string; type: string; crew: { name: string; rank: string; status?: string }[] }[] });
           const shortfall = calculateShortfall(stations, shiftPlatoon, detail.date, shiftType);
           if (shortfall.totalHoles > 0) {
             shortfalls.push(shortfall);
           }
+        } else {
+          dataStale = true; // no data at all
         }
       }
     }
@@ -325,6 +336,7 @@ export async function GET(req: Request) {
     next6OffDetails,
     prediction,
     shortfalls,
+    dataStale,
     ytdNeeded,
     ytdWorked,
   });
