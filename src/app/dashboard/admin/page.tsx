@@ -101,13 +101,42 @@ export default function AdminPage() {
     showMessage("Cache cleared");
   }
 
+  const [scraping, setScraping] = useState(false);
+  const [scrapeProgress, setScrapeProgress] = useState(0);
+
   async function triggerScrape() {
+    setScraping(true);
+    setScrapeProgress(0);
     await fetch("/api/admin", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "trigger-scrape" }),
     });
-    showMessage("Scrape triggered — check logs");
+    showMessage("Scrape started — tracking progress");
+
+    // Poll cache stats to track progress (17 days × 4 platoons = 68 roster entries expected)
+    const expectedTotal = 68;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/admin?action=cache-stats");
+        const stats = await res.json();
+        const progress = Math.min(100, Math.round((stats.staffingEntries / expectedTotal) * 100));
+        setScrapeProgress(progress);
+        setCacheStats(stats);
+        if (progress >= 95) {
+          clearInterval(interval);
+          setScraping(false);
+          setScrapeProgress(100);
+          showMessage("Scrape complete!");
+        }
+      } catch {}
+    }, 5000);
+
+    // Safety timeout after 10 minutes
+    setTimeout(() => {
+      clearInterval(interval);
+      setScraping(false);
+    }, 600000);
   }
 
   async function enrichCallInList() {
@@ -185,12 +214,13 @@ export default function AdminPage() {
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
                 Scrape Schedule
               </h2>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={triggerScrape}
-                  className="px-3 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[10px] tracking-wider uppercase transition-all"
+                  disabled={scraping}
+                  className="px-3 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[10px] tracking-wider uppercase transition-all disabled:opacity-50"
                 >
-                  Run Now
+                  {scraping ? `${scrapeProgress}%` : "Run Now"}
                 </button>
                 <button
                   onClick={saveSettings}
@@ -198,6 +228,14 @@ export default function AdminPage() {
                 >
                   Save
                 </button>
+                {scraping && (
+                  <div className="flex-1 max-w-[200px] h-2 bg-surface-overlay overflow-hidden">
+                    <div
+                      className="h-full bg-ember transition-all duration-500"
+                      style={{ width: `${scrapeProgress}%` }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
             <div className="p-4 grid grid-cols-2 sm:grid-cols-5 gap-4">
