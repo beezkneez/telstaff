@@ -86,34 +86,21 @@ export default function DashboardPage() {
             const name = data.profile.name || "";
             setUserName(name);
 
-            // Search all platoons for the user today (handles trades)
-            const lastName = name.split(" ").pop()?.toLowerCase() || "";
-            if (lastName) {
-              let found = false;
-              // Check home platoon first, then others
-              const platoonOrder = [plt, ...["1", "2", "3", "4"].filter((p) => p !== plt)];
-              for (const p of platoonOrder) {
-                try {
-                  const sRes = await fetch(`/api/stations?platoon=${p}&date=${selectedDate}`);
-                  if (!sRes.ok) continue;
-                  const sData = await sRes.json();
-                  const stations: StationStaffing[] = Array.isArray(sData) ? sData : [sData];
-                  for (const s of stations) {
-                    for (const t of s.trucks) {
-                      if (t.crew?.some((c: { name?: string }) => c.name?.toLowerCase().includes(lastName))) {
-                        setPlatoon(p);
-                        setStation(s.station);
-                        found = true;
-                        break;
-                      }
-                    }
-                    if (found) break;
-                  }
-                  if (found) break;
-                } catch { /* continue to next platoon */ }
+            // Fast search: find user across all platoons in one DB query
+            try {
+              const findRes = await fetch(`/api/stations/find-me?name=${encodeURIComponent(name)}&date=${selectedDate}`);
+              if (findRes.ok) {
+                const findData = await findRes.json();
+                if (findData.found) {
+                  setPlatoon(findData.platoon);
+                  setStation(findData.station);
+                } else {
+                  setPlatoon(plt);
+                }
+              } else {
+                setPlatoon(plt);
               }
-              if (!found) setPlatoon(plt); // fallback to home platoon
-            } else {
+            } catch {
               setPlatoon(plt);
             }
           } else {
