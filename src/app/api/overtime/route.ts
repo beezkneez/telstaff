@@ -260,7 +260,7 @@ export async function GET(req: Request) {
   // Check if data is stale (>4 hours old) and flag for refresh
   const shortfalls: StaffingShortfall[] = [];
   let dataStale = false;
-  const staleThreshold = 4 * 60 * 60 * 1000; // 4 hours
+  const staleThreshold = 8 * 60 * 60 * 1000; // 8 hours
   const allEligibleDetails = [...sixOffDetails, ...next6OffDetails];
   try {
     for (const detail of allEligibleDetails) {

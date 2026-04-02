@@ -143,25 +143,13 @@ export default function OvertimePage() {
               <button
                 onClick={async () => {
                   setLoading(true);
-                  // Only scrape the specific platoon working each shift
-                  const scrapes = new Set<string>();
-                  const dates = data.next6OffDetails?.filter((d) => d.eligible) || [];
-                  for (const d of dates) {
-                    if (d.dayShiftPlatoon) scrapes.add(`${d.dayShiftPlatoon}:${d.date}`);
-                    if (d.nightShiftPlatoon) scrapes.add(`${d.nightShiftPlatoon}:${d.date}`);
-                  }
-                  // Today's shifts too
-                  if (data.onShift.dayShift) scrapes.add(`${data.onShift.dayShift}:${selectedDate}`);
-                  if (data.onShift.nightShift) scrapes.add(`${data.onShift.nightShift}:${selectedDate}`);
-
-                  for (const key of scrapes) {
-                    const [plt, dt] = key.split(":");
-                    await fetch("/api/stations/refresh", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ platoon: plt, date: dt }),
-                    }).catch(() => {});
-                  }
+                  // Just scrape today's on-shift platoon — fast single scrape
+                  const todayPlatoon = data.onShift.dayShift || data.onShift.nightShift || "1";
+                  await fetch("/api/stations/refresh", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ platoon: todayPlatoon, date: selectedDate }),
+                  }).catch(() => {});
                   // Reload overtime data
                   const res = await fetch(`/api/overtime?date=${selectedDate}`);
                   const d = await res.json();
