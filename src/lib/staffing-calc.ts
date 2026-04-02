@@ -140,8 +140,9 @@ export function calculateShortfall(
     }
   }
 
-  // Off-roster qualified can fill captain spots — reduce captain holes
-  totalCaptainHoles = Math.max(0, captainHolesRemaining - offRosterQualified);
+  // Don't subtract qualified from captain holes — moving a qualified person
+  // to fill a captain spot creates an FF hole. Total call-ins needed stays the same.
+  totalCaptainHoles = captainHolesRemaining;
 
   return {
     date,
