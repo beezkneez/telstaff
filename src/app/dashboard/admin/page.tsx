@@ -139,6 +139,16 @@ export default function AdminPage() {
     }, 600000);
   }
 
+  async function matchUsers() {
+    const res = await fetch("/api/admin/callin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "match-users" }),
+    });
+    const data = await res.json();
+    showMessage(`Matched ${data.matched} of ${data.total} users to call-in records`);
+  }
+
   async function enrichCallInList() {
     const res = await fetch("/api/admin/callin", {
       method: "POST",
@@ -341,6 +351,12 @@ export default function AdminPage() {
                   className="px-3 py-1.5 bg-success/20 border border-success/30 text-success font-mono text-[10px] tracking-wider uppercase hover:bg-success/30 transition-all"
                 >
                   Import Call-In List
+                </button>
+                <button
+                  onClick={matchUsers}
+                  className="px-3 py-1.5 bg-amber/20 border border-amber/30 text-amber font-mono text-[10px] tracking-wider uppercase hover:bg-amber/30 transition-all"
+                >
+                  Match Users
                 </button>
                 <button
                   onClick={enrichCallInList}
