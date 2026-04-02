@@ -143,12 +143,29 @@ export default function OvertimePage() {
               <button
                 onClick={async () => {
                   setLoading(true);
-                  // Trigger fresh scrape for upcoming dates
-                  await fetch("/api/stations/refresh", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ platoon: data.onShift.dayShift || "1", date: selectedDate }),
-                  });
+                  // Scrape all relevant platoons for upcoming 6-off dates
+                  const dates = data.next6OffDetails?.filter((d) => d.eligible) || [];
+                  const platoons = new Set<string>();
+                  for (const d of dates) {
+                    if (d.dayShiftPlatoon) platoons.add(d.dayShiftPlatoon);
+                    if (d.nightShiftPlatoon) platoons.add(d.nightShiftPlatoon);
+                  }
+                  // Also refresh today
+                  if (data.onShift.dayShift) platoons.add(data.onShift.dayShift);
+                  if (data.onShift.nightShift) platoons.add(data.onShift.nightShift);
+
+                  const allDates = [selectedDate, ...dates.map((d) => d.date)];
+                  const uniqueDates = [...new Set(allDates)];
+
+                  for (const plt of platoons) {
+                    for (const dt of uniqueDates) {
+                      await fetch("/api/stations/refresh", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ platoon: plt, date: dt }),
+                      }).catch(() => {});
+                    }
+                  }
                   // Reload overtime data
                   const res = await fetch(`/api/overtime?date=${selectedDate}`);
                   const d = await res.json();
