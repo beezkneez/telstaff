@@ -143,28 +143,24 @@ export default function OvertimePage() {
               <button
                 onClick={async () => {
                   setLoading(true);
-                  // Scrape all relevant platoons for upcoming 6-off dates
+                  // Only scrape the specific platoon working each shift
+                  const scrapes = new Set<string>();
                   const dates = data.next6OffDetails?.filter((d) => d.eligible) || [];
-                  const platoons = new Set<string>();
                   for (const d of dates) {
-                    if (d.dayShiftPlatoon) platoons.add(d.dayShiftPlatoon);
-                    if (d.nightShiftPlatoon) platoons.add(d.nightShiftPlatoon);
+                    if (d.dayShiftPlatoon) scrapes.add(`${d.dayShiftPlatoon}:${d.date}`);
+                    if (d.nightShiftPlatoon) scrapes.add(`${d.nightShiftPlatoon}:${d.date}`);
                   }
-                  // Also refresh today
-                  if (data.onShift.dayShift) platoons.add(data.onShift.dayShift);
-                  if (data.onShift.nightShift) platoons.add(data.onShift.nightShift);
+                  // Today's shifts too
+                  if (data.onShift.dayShift) scrapes.add(`${data.onShift.dayShift}:${selectedDate}`);
+                  if (data.onShift.nightShift) scrapes.add(`${data.onShift.nightShift}:${selectedDate}`);
 
-                  const allDates = [selectedDate, ...dates.map((d) => d.date)];
-                  const uniqueDates = [...new Set(allDates)];
-
-                  for (const plt of platoons) {
-                    for (const dt of uniqueDates) {
-                      await fetch("/api/stations/refresh", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ platoon: plt, date: dt }),
-                      }).catch(() => {});
-                    }
+                  for (const key of scrapes) {
+                    const [plt, dt] = key.split(":");
+                    await fetch("/api/stations/refresh", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ platoon: plt, date: dt }),
+                    }).catch(() => {});
                   }
                   // Reload overtime data
                   const res = await fetch(`/api/overtime?date=${selectedDate}`);
