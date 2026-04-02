@@ -42,7 +42,7 @@ export async function GET(req: Request) {
         useSystemCreds: true,
         telestaff_username: true,
         createdAt: true,
-        profile: { select: { name: true, platoon: true, homeStation: true } },
+        profile: { select: { id: true, name: true, platoon: true, homeStation: true, payrollNumber: true } },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -115,6 +115,28 @@ export async function PUT(req: Request) {
         isAdmin: body.isAdmin,
       },
     });
+    return NextResponse.json({ success: true });
+  }
+
+  if (body.action === "update-profile") {
+    const profile = await prisma.profile.findUnique({ where: { userId: body.userId } });
+    if (profile) {
+      await prisma.profile.update({
+        where: { userId: body.userId },
+        data: {
+          ...(body.name !== undefined && { name: body.name }),
+          ...(body.platoon !== undefined && { platoon: body.platoon }),
+          ...(body.homeStation !== undefined && { homeStation: parseInt(body.homeStation) }),
+          ...(body.payrollNumber !== undefined && { payrollNumber: body.payrollNumber }),
+        },
+      });
+    }
+    if (body.email) {
+      await prisma.user.update({
+        where: { id: body.userId },
+        data: { email: body.email },
+      });
+    }
     return NextResponse.json({ success: true });
   }
 

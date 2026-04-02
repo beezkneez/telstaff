@@ -9,7 +9,7 @@ interface UserInfo {
   useSystemCreds: boolean;
   hasTelestaffCreds: boolean;
   createdAt: string;
-  profile: { name: string; platoon: string; homeStation: number } | null;
+  profile: { name: string; platoon: string; homeStation: number; payrollNumber: string | null } | null;
 }
 
 interface Settings {
@@ -26,6 +26,117 @@ interface CacheStats {
   otwpEntries: number;
   lastStaffingScrape: string | null;
   lastOtwpScrape: string | null;
+}
+
+function UserCard({ user, onUpdate, onDelete, onMessage }: {
+  user: UserInfo;
+  onUpdate: (id: string, data: Partial<UserInfo>) => void;
+  onDelete: (id: string) => void;
+  onMessage: (msg: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [edit, setEdit] = useState({
+    name: user.profile?.name || "",
+    email: user.email,
+    platoon: user.profile?.platoon || "1",
+    homeStation: String(user.profile?.homeStation || 1),
+    payrollNumber: user.profile?.payrollNumber || "",
+  });
+
+  async function saveProfile() {
+    await fetch("/api/admin", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update-profile",
+        userId: user.id,
+        ...edit,
+      }),
+    });
+    onMessage("Profile updated");
+  }
+
+  return (
+    <div className="px-4 py-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-sm text-foreground">{user.profile?.name || user.email}</span>
+            {user.isAdmin && <span className="font-mono text-[9px] px-1.5 py-0.5 bg-ember/20 text-ember border border-ember/30 tracking-wider">ADMIN</span>}
+          </div>
+          <div className="font-mono text-[10px] text-muted flex flex-wrap gap-3 mt-1">
+            <span>{user.email}</span>
+            {user.profile && (
+              <>
+                <span>PLT-{user.profile.platoon}</span>
+                <span>STN-{String(user.profile.homeStation).padStart(2, "0")}</span>
+                {user.profile.payrollNumber && <span>#{user.profile.payrollNumber}</span>}
+              </>
+            )}
+            <span>Creds: {user.hasTelestaffCreds ? "Own" : user.useSystemCreds ? "System" : "None"}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="px-2 py-1 font-mono text-[9px] tracking-wider border border-border text-muted hover:text-foreground hover:border-ember/40 transition-all"
+          >
+            {expanded ? "CLOSE" : "PROFILE"}
+          </button>
+          <button
+            onClick={() => onUpdate(user.id, { useSystemCreds: !user.useSystemCreds })}
+            className={`px-2 py-1 font-mono text-[9px] tracking-wider border transition-all ${user.useSystemCreds ? "bg-success/10 text-success border-success/30" : "bg-surface-overlay text-muted border-border"}`}
+          >
+            {user.useSystemCreds ? "SYS CREDS" : "OWN CREDS"}
+          </button>
+          {!user.isAdmin && (
+            <button onClick={() => onDelete(user.id)} className="px-2 py-1 font-mono text-[9px] tracking-wider text-alert-red border border-alert-red/30 hover:bg-alert-red/10 transition-all">
+              DELETE
+            </button>
+          )}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-3 p-3 border border-border-subtle bg-surface-raised/30 animate-fade-in">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Name</label>
+              <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground" />
+            </div>
+            <div>
+              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Email</label>
+              <input value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground" />
+            </div>
+            <div>
+              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Payroll #</label>
+              <input value={edit.payrollNumber} onChange={(e) => setEdit({ ...edit, payrollNumber: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground" />
+            </div>
+            <div>
+              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Platoon</label>
+              <select value={edit.platoon} onChange={(e) => setEdit({ ...edit, platoon: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground">
+                {["1", "2", "3", "4"].map((p) => <option key={p} value={p}>Platoon {p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Home Station</label>
+              <select value={edit.homeStation} onChange={(e) => setEdit({ ...edit, homeStation: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground">
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((s) => <option key={s} value={s}>Station {s}</option>)}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button onClick={saveProfile} className="px-4 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[10px] tracking-wider uppercase transition-all">
+                Save
+              </button>
+            </div>
+          </div>
+          <div className="font-mono text-[9px] text-muted">
+            ID: {user.id} · Created: {new Date(user.createdAt).toLocaleDateString()}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminPage() {
@@ -465,53 +576,9 @@ export default function AdminPage() {
           </div>
           <div className="divide-y divide-border-subtle">
             {users.map((user) => (
-              <div key={user.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm text-foreground">
-                      {user.profile?.name || user.email}
-                    </span>
-                    {user.isAdmin && (
-                      <span className="font-mono text-[9px] px-1.5 py-0.5 bg-ember/20 text-ember border border-ember/30 tracking-wider">
-                        ADMIN
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-mono text-[10px] text-muted flex flex-wrap gap-3 mt-1">
-                    <span>{user.email}</span>
-                    {user.profile && (
-                      <>
-                        <span>PLT-{user.profile.platoon}</span>
-                        <span>STN-{String(user.profile.homeStation).padStart(2, "0")}</span>
-                      </>
-                    )}
-                    <span>
-                      Creds: {user.hasTelestaffCreds ? "Own" : user.useSystemCreds ? "System" : "None"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => updateUser(user.id, { useSystemCreds: !user.useSystemCreds })}
-                    className={`px-2 py-1 font-mono text-[9px] tracking-wider border transition-all ${
-                      user.useSystemCreds
-                        ? "bg-success/10 text-success border-success/30"
-                        : "bg-surface-overlay text-muted border-border"
-                    }`}
-                  >
-                    {user.useSystemCreds ? "SYS CREDS" : "OWN CREDS"}
-                  </button>
-                  {!user.isAdmin && (
-                    <button
-                      onClick={() => deleteUser(user.id)}
-                      className="px-2 py-1 font-mono text-[9px] tracking-wider text-alert-red border border-alert-red/30 hover:bg-alert-red/10 transition-all"
-                    >
-                      DELETE
-                    </button>
-                  )}
-                </div>
-              </div>
+              <UserCard key={user.id} user={user} onUpdate={updateUser} onDelete={deleteUser} onMessage={showMessage} />
             ))}
+                      DELETE
           </div>
         </div>
 
