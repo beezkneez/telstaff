@@ -261,7 +261,9 @@ export async function GET(req: Request) {
   const shortfalls: StaffingShortfall[] = [];
   let dataStale = false;
   const staleThreshold = 8 * 60 * 60 * 1000; // 8 hours
-  const allEligibleDetails = [...sixOffDetails, ...next6OffDetails];
+  // Deduplicate: use only next 6-off for shortfalls (most relevant for upcoming call-ins)
+  // Last 6-off shortfalls are historical and less useful
+  const allEligibleDetails = next6OffDetails;
   try {
     for (const detail of allEligibleDetails) {
       if (!detail.eligible) continue;
