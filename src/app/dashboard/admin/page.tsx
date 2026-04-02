@@ -42,6 +42,8 @@ function UserCard({ user, onUpdate, onDelete, onMessage }: {
     homeStation: String(user.profile?.homeStation || 1),
     payrollNumber: user.profile?.payrollNumber || "",
   });
+  const [dbSearch, setDbSearch] = useState("");
+  const [dbResults, setDbResults] = useState<{ lastName: string; firstName: string | null; platoon: string; position: number; payrollNumber: string | null }[]>([]);
 
   async function saveProfile() {
     await fetch("/api/admin", {
@@ -130,7 +132,65 @@ function UserCard({ user, onUpdate, onDelete, onMessage }: {
               </button>
             </div>
           </div>
-          <div className="font-mono text-[9px] text-muted">
+          {/* Link to DB record */}
+          <div className="mt-3 pt-3 border-t border-border-subtle">
+            <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Link to Database Record</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={dbSearch}
+                onChange={async (e) => {
+                  setDbSearch(e.target.value);
+                  if (e.target.value.length < 2) { setDbResults([]); return; }
+                  const res = await fetch(`/api/admin/callin?action=search&q=${encodeURIComponent(e.target.value)}`);
+                  if (res.ok) setDbResults(await res.json());
+                }}
+                placeholder="Search database by name..."
+                className="w-full px-3 py-2 bg-background border border-border font-mono text-xs text-foreground placeholder:text-muted/50"
+              />
+              {dbResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-surface-raised border border-border z-50 max-h-40 overflow-y-auto">
+                  {dbResults.map((r, i) => (
+                    <button
+                      key={i}
+                      onClick={async () => {
+                        setEdit({
+                          ...edit,
+                          name: `${r.firstName || ""} ${r.lastName}`.trim(),
+                          platoon: r.platoon,
+                          payrollNumber: r.payrollNumber || "",
+                        });
+                        setDbSearch("");
+                        setDbResults([]);
+                        // Also save immediately
+                        await fetch("/api/admin", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "update-profile",
+                            userId: user.id,
+                            name: `${r.firstName || ""} ${r.lastName}`.trim(),
+                            platoon: r.platoon,
+                            payrollNumber: r.payrollNumber || "",
+                          }),
+                        });
+                        onMessage(`Linked to ${r.lastName}, ${r.firstName} (PLT-${r.platoon})`);
+                      }}
+                      className="w-full text-left px-3 py-2 font-mono text-xs hover:bg-surface-overlay transition-colors flex justify-between"
+                    >
+                      <span>{r.lastName}{r.firstName ? `, ${r.firstName}` : ""}</span>
+                      <div className="flex gap-2">
+                        <span style={{ color: `var(--platoon-${r.platoon})` }}>PLT-{r.platoon}</span>
+                        {r.payrollNumber && <span className="text-muted">#{r.payrollNumber}</span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="font-mono text-[9px] text-muted mt-2">
             ID: {user.id} · Created: {new Date(user.createdAt).toLocaleDateString()}
           </div>
         </div>
