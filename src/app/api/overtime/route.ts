@@ -300,23 +300,27 @@ export async function GET(req: Request) {
     console.error("[overtime] Shortfall calc error:", err);
   }
 
-  // Update prediction with TONIGHT'S holes only (not all days summed)
-  if (prediction && shortfalls.length > 0 && callInData?.positionsAhead !== null) {
-    // Find the next upcoming shift's holes (today or tomorrow)
-    const todayStr = new Date().toISOString().split("T")[0];
-    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-    const upcomingShift = shortfalls.find((sf) =>
-      sf.date === todayStr || sf.date === tomorrowStr
-    );
-    const tonightHoles = upcomingShift ? upcomingShift.ffHoles :
-      (shortfalls.length > 0 ? shortfalls[0].ffHoles : 0);
+  // Update prediction with the NEXT shift's holes from the upcoming 6-off
+  if (prediction && callInData?.positionsAhead !== null) {
+    // Find the first upcoming shift with holes (day or night)
+    const nextDayShift = shortfalls.find((sf) => sf.shift === "day");
+    const nextNightShift = shortfalls.find((sf) => sf.shift === "night");
 
-    if (tonightHoles > 0) {
+    // Use the average holes per shift across the upcoming 6-off
+    const allHoles = shortfalls.map((sf) => sf.ffHoles);
+    const avgHolesPerShift = allHoles.length > 0
+      ? Math.round(allHoles.reduce((s, h) => s + h, 0) / allHoles.length)
+      : 0;
+
+    // Use the first day shift holes as the primary number (most relevant)
+    const primaryHoles = nextDayShift?.ffHoles || nextNightShift?.ffHoles || avgHolesPerShift;
+
+    if (primaryHoles > 0) {
       prediction = predictOvertime({
         positionsAhead: callInData!.positionsAhead!,
         last6OffTotal: prediction.last6OffTotal,
         todayOtwp: prediction.todayOtwp,
-        todayHoles: tonightHoles,
+        todayHoles: primaryHoles,
         date,
         yesterdayRatio: prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value !== "N/A"
           ? parseFloat(prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value || "0")
