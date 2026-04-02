@@ -13,6 +13,7 @@ export default function RegisterPage() {
     password: "",
     platoon: "1",
     homeStation: "1",
+    payrollNumber: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -112,6 +113,23 @@ export default function RegisterPage() {
                 className="w-full px-4 py-3 rounded-md bg-surface border border-border text-foreground placeholder:text-muted/50 transition-colors focus:border-ember/50"
                 placeholder="John Smith"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                Payroll Number
+              </label>
+              <input
+                type="text"
+                value={form.payrollNumber}
+                onChange={(e) => update("payrollNumber", e.target.value)}
+                required
+                className="w-full px-4 py-3 rounded-md bg-surface border border-border text-foreground placeholder:text-muted/50 transition-colors focus:border-ember/50"
+                placeholder="7-digit employee ID (e.g., 0862778)"
+              />
+              <p className="font-mono text-[10px] text-muted mt-1">
+                Found on your Telestaff profile or pay stub
+              </p>
             </div>
 
             <div>

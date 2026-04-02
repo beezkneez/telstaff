@@ -96,6 +96,45 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   }
 
+  if (body.action === "match-users") {
+    // Auto-match existing users to CallInMember records by name
+    const users = await prisma.user.findMany({
+      include: { profile: true },
+    });
+    let matched = 0;
+    for (const user of users) {
+      if (!user.profile) continue;
+      const lastName = user.profile.name.split(" ").pop()?.toUpperCase() || "";
+      if (!lastName) continue;
+
+      const member = await prisma.callInMember.findFirst({
+        where: {
+          platoon: user.profile.platoon,
+          lastName: { equals: lastName, mode: "insensitive" },
+        },
+      });
+
+      if (member) {
+        // Update profile with payroll if member has it
+        if (member.payrollNumber && !user.profile.payrollNumber) {
+          await prisma.profile.update({
+            where: { id: user.profile.id },
+            data: { payrollNumber: member.payrollNumber },
+          });
+        }
+        // Update CallInMember with payroll from profile if it has it
+        if (user.profile.payrollNumber && !member.payrollNumber) {
+          await prisma.callInMember.update({
+            where: { id: member.id },
+            data: { payrollNumber: user.profile.payrollNumber },
+          });
+        }
+        matched++;
+      }
+    }
+    return NextResponse.json({ matched, total: users.length });
+  }
+
   if (body.action === "add-member") {
     const { addNewHire } = await import("@/lib/callin-db");
     await addNewHire(body.platoon, body.lastName, body.firstName, body.payrollNumber);

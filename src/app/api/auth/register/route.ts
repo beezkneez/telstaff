@@ -5,9 +5,9 @@ import { sendWelcomeEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name, platoon, homeStation } = await req.json();
+    const { email, password, name, platoon, homeStation, payrollNumber } = await req.json();
 
-    if (!email || !password || !name || !platoon || !homeStation) {
+    if (!email || !password || !name || !platoon || !homeStation || !payrollNumber) {
       return NextResponse.json(
         { error: "All fields are required" },
         { status: 400 }
@@ -22,7 +22,34 @@ export async function POST(req: Request) {
       );
     }
 
+    // Verify payroll number exists in CallInMember database
+    const member = await prisma.callInMember.findFirst({
+      where: { payrollNumber, platoon },
+    });
+
+    if (!member) {
+      // Try finding by payroll across all platoons
+      const anyMember = await prisma.callInMember.findFirst({
+        where: { payrollNumber },
+      });
+
+      if (anyMember) {
+        return NextResponse.json(
+          { error: `Payroll number found on PLT-${anyMember.platoon}, not PLT-${platoon}. Please select the correct platoon.` },
+          { status: 400 }
+        );
+      }
+
+      // Not a hard error — they might be new or not in the DB yet
+      console.log(`[register] Payroll ${payrollNumber} not found in CallInMember DB`);
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
+
+    // Use name from CallInMember if available (more accurate)
+    const displayName = member
+      ? `${member.firstName || ""} ${member.lastName}`.trim()
+      : name;
 
     const user = await prisma.user.create({
       data: {
@@ -30,14 +57,23 @@ export async function POST(req: Request) {
         passwordHash,
         profile: {
           create: {
-            name,
-            platoon,
+            name: displayName,
+            platoon: member?.platoon || platoon,
             homeStation: parseInt(homeStation),
+            payrollNumber,
           },
         },
       },
       include: { profile: true },
     });
+
+    // Update CallInMember with payroll number if not already set
+    if (member && !member.payrollNumber) {
+      await prisma.callInMember.update({
+        where: { id: member.id },
+        data: { payrollNumber },
+      });
+    }
 
     // Send welcome email (fire and forget)
     sendWelcomeEmail(user.email, user.profile?.name || "").catch(() => {});
