@@ -112,16 +112,31 @@ export async function GET(req: Request) {
     return NextResponse.json({ results: memCached, cached: true });
   }
 
-  // Need credentials to scrape
-  if (!user.telestaff_username || !user.telestaff_password) {
+  // Get credentials — own or fall back to admin/system creds
+  let username = "";
+  let password = "";
+
+  if (user.telestaff_username && user.telestaff_password) {
+    username = decrypt(user.telestaff_username);
+    password = decrypt(user.telestaff_password);
+  } else {
+    // Fall back to admin creds
+    const admin = await prisma.user.findFirst({
+      where: { isAdmin: true, telestaff_username: { not: null } },
+      select: { telestaff_username: true, telestaff_password: true },
+    });
+    if (admin?.telestaff_username && admin?.telestaff_password) {
+      username = decrypt(admin.telestaff_username);
+      password = decrypt(admin.telestaff_password);
+    }
+  }
+
+  if (!username || !password) {
     return NextResponse.json(
-      { error: "Telestaff credentials required for live scraping" },
+      { error: "No Telestaff credentials available" },
       { status: 400 }
     );
   }
-
-  const username = decrypt(user.telestaff_username);
-  const password = decrypt(user.telestaff_password);
 
   // Scrape OTWP data
   console.log("[otwp-api] Scraping OTWP for", scrapeList.length, "dates...");
