@@ -132,6 +132,11 @@ export async function updateFromOTWP(
 
   console.log(`[callin-db] updateFromOTWP: PLT-${platoon} ${shift} on ${date}, ${otwpNames.length} OTWP names, ${members.length} members in DB`);
 
+  // Only update list position from today's or yesterday's data — not historical
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const isRecent = date === today || date === yesterday;
+
   if (members.length === 0 || otwpNames.length === 0) {
     console.log(`[callin-db] Skipping — no members or no OTWP names`);
     return null;
@@ -139,7 +144,7 @@ export async function updateFromOTWP(
 
   const state = await prisma.callInState.findUnique({ where: { platoon } });
   const currentUpPos = state?.currentUpPos || 1;
-  console.log(`[callin-db] Current up position: ${currentUpPos}`);
+  console.log(`[callin-db] Current up position: ${currentUpPos}, isRecent: ${isRecent}`);
 
   // Match OTWP names to list positions using first + last name
   const matchedPositions: number[] = [];
@@ -199,21 +204,37 @@ export async function updateFromOTWP(
   const namesDialed = furthestDistance + 1;
   const ratio = otwpNames.length > 0 ? namesDialed / otwpNames.length : 0;
 
-  // Update state
+  // Only update the list position for recent data (today/yesterday)
+  // And only move FORWARD, never backward
   const lastMember = members.find((m) => m.position === furthestPos);
-  await prisma.callInState.upsert({
-    where: { platoon },
-    update: {
-      currentUpPos: newCurrentUp,
-      lastOtwpName: lastMember?.lastName || null,
-      updatedAt: new Date(),
-    },
-    create: {
-      platoon,
-      currentUpPos: newCurrentUp,
-      lastOtwpName: lastMember?.lastName || null,
-    },
-  });
+
+  if (isRecent) {
+    // Check if new position is ahead of current (forward movement only)
+    const currentIdx = members.findIndex((m) => m.position === currentUpPos);
+    const newIdx = members.findIndex((m) => m.position === newCurrentUp);
+    const isForward = newIdx > currentIdx || (newIdx < currentIdx && furthestDistance > members.length / 2);
+
+    if (isForward || currentUpPos === 1) {
+      await prisma.callInState.upsert({
+        where: { platoon },
+        update: {
+          currentUpPos: newCurrentUp,
+          lastOtwpName: lastMember?.lastName || null,
+          updatedAt: new Date(),
+        },
+        create: {
+          platoon,
+          currentUpPos: newCurrentUp,
+          lastOtwpName: lastMember?.lastName || null,
+        },
+      });
+      console.log(`[callin-db] List position UPDATED: ${currentUpPos} → ${newCurrentUp}`);
+    } else {
+      console.log(`[callin-db] Skipping backward move: ${currentUpPos} → ${newCurrentUp} (would go backward)`);
+    }
+  } else {
+    console.log(`[callin-db] Historical date ${date} — saving history only, not moving list`);
+  }
 
   // Save history
   const dateObj = new Date(date + "T00:00:00Z");
