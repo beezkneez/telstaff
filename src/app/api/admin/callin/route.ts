@@ -17,6 +17,24 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const action = searchParams.get("action");
 
+  if (action === "search") {
+    const q = searchParams.get("q") || "";
+    if (q.length < 2) return NextResponse.json([]);
+    const results = await prisma.callInMember.findMany({
+      where: {
+        active: true,
+        OR: [
+          { lastName: { contains: q, mode: "insensitive" } },
+          { firstName: { contains: q, mode: "insensitive" } },
+          { payrollNumber: { contains: q } },
+        ],
+      },
+      orderBy: [{ platoon: "asc" }, { position: "asc" }],
+      take: 20,
+    });
+    return NextResponse.json(results);
+  }
+
   if (action === "list") {
     const platoon = searchParams.get("platoon") || "1";
     const members = await prisma.callInMember.findMany({

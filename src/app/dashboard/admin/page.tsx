@@ -160,6 +160,19 @@ export default function AdminPage() {
     showMessage(`Imported ${data.imported} members from Google Sheet`);
   }
 
+  const [nameSearch, setNameSearch] = useState("");
+  const [nameResults, setNameResults] = useState<{ lastName: string; firstName: string | null; platoon: string; position: number; payrollNumber: string | null }[]>([]);
+
+  async function searchName(query: string) {
+    setNameSearch(query);
+    if (query.length < 2) { setNameResults([]); return; }
+    const res = await fetch(`/api/admin/callin?action=search&q=${encodeURIComponent(query)}`);
+    if (res.ok) {
+      const data = await res.json();
+      setNameResults(data);
+    }
+  }
+
   async function backfillYTD() {
     if (!confirm("Backfill OTWP data from Jan 1 to today? This runs in the background and may take 1-2 hours.")) return;
     const res = await fetch("/api/admin/backfill", { method: "POST" });
@@ -377,6 +390,55 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Name Search */}
+        <div className="bg-surface border border-border animate-fade-slide-up delay-250">
+          <div className="px-4 py-3 border-b border-border bg-surface-raised/50">
+            <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
+              Staff Search
+            </h2>
+          </div>
+          <div className="p-4">
+            <input
+              type="text"
+              value={nameSearch}
+              onChange={(e) => searchName(e.target.value)}
+              placeholder="Type a name..."
+              className="w-full px-4 py-3 bg-background border border-border font-mono text-sm text-foreground placeholder:text-muted/50 focus:border-ember/50 mb-3"
+            />
+            {nameResults.length > 0 && (
+              <div className="divide-y divide-border-subtle border border-border-subtle">
+                {nameResults.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-sm text-foreground">
+                        {r.lastName}{r.firstName ? `, ${r.firstName}` : ""}
+                      </span>
+                      {r.payrollNumber && (
+                        <span className="font-mono text-[10px] text-muted">#{r.payrollNumber}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="font-mono text-[10px] tracking-wider px-1.5 py-0.5"
+                        style={{
+                          backgroundColor: `color-mix(in srgb, var(--platoon-${r.platoon}) 15%, transparent)`,
+                          color: `var(--platoon-${r.platoon})`,
+                        }}
+                      >
+                        PLT-{r.platoon}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted">Pos #{r.position}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {nameSearch.length >= 2 && nameResults.length === 0 && (
+              <p className="font-mono text-xs text-muted">No results found</p>
+            )}
+          </div>
+        </div>
 
         {/* Users */}
         <div className="bg-surface border border-border animate-fade-slide-up delay-300">
