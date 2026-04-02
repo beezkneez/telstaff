@@ -97,6 +97,21 @@ export default function OvertimePage() {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="px-3 py-2 bg-surface border border-border font-mono text-[11px] tracking-wider text-foreground cursor-pointer"
             />
+            <button
+              onClick={async () => {
+                setLoading(true);
+                // Force fresh OTWP scrape
+                await fetch(`/api/overtime/otwp?date=${selectedDate}&force=true`);
+                // Reload overtime data
+                const res = await fetch(`/api/overtime?date=${selectedDate}`);
+                const d = await res.json();
+                setData(d);
+                setLoading(false);
+              }}
+              className="px-3 py-2 bg-surface border border-border font-mono text-[10px] tracking-wider text-muted hover:text-ember hover:border-ember/40 uppercase transition-colors"
+            >
+              Update List
+            </button>
             <Link
               href="/dashboard/overtime/analytics"
               className="px-3 py-2 bg-surface border border-border font-mono text-[10px] tracking-wider text-muted hover:text-ember hover:border-ember/40 uppercase transition-colors"

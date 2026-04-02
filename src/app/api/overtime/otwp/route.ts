@@ -15,6 +15,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const date =
     searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const force = searchParams.get("force") === "true";
 
   // Get user
   const user = await prisma.user.findUnique({
@@ -51,8 +52,8 @@ export async function GET(req: Request) {
     })
     .filter((d) => d.dayShiftPlatoon && d.nightShiftPlatoon);
 
-  // Check database cache first
-  try {
+  // Check database cache first (skip if force refresh)
+  if (!force) try {
     const results = [];
     let allCached = true;
 
@@ -105,7 +106,7 @@ export async function GET(req: Request) {
     "@/lib/otwp-scraper"
   );
 
-  const memCached = getCachedOTWP(cacheKey);
+  const memCached = !force ? getCachedOTWP(cacheKey) : null;
   if (memCached) {
     console.log("[otwp-api] Memory cache hit");
     return NextResponse.json({ results: memCached, cached: true });
