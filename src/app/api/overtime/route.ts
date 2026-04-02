@@ -300,6 +300,8 @@ export async function GET(req: Request) {
     console.error("[overtime] Shortfall calc error:", err);
   }
 
+  console.log("[overtime] Shortfalls:", shortfalls.map((sf) => `${sf.date} ${sf.shift} PLT-${sf.platoon}: ${sf.ffHoles}FF ${sf.captainHoles}Capt`).join(", "));
+
   // Update prediction with the NEXT shift's holes from the upcoming 6-off
   if (prediction && callInData?.positionsAhead !== null) {
     // Find the first upcoming shift with holes (day or night)
