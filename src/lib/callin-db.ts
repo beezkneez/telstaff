@@ -130,10 +130,16 @@ export async function updateFromOTWP(
     orderBy: { position: "asc" },
   });
 
-  if (members.length === 0 || otwpNames.length === 0) return null;
+  console.log(`[callin-db] updateFromOTWP: PLT-${platoon} ${shift} on ${date}, ${otwpNames.length} OTWP names, ${members.length} members in DB`);
+
+  if (members.length === 0 || otwpNames.length === 0) {
+    console.log(`[callin-db] Skipping — no members or no OTWP names`);
+    return null;
+  }
 
   const state = await prisma.callInState.findUnique({ where: { platoon } });
   const currentUpPos = state?.currentUpPos || 1;
+  console.log(`[callin-db] Current up position: ${currentUpPos}`);
 
   // Match OTWP names to list positions using first + last name
   const matchedPositions: number[] = [];
@@ -162,6 +168,9 @@ export async function updateFromOTWP(
 
     if (member) {
       matchedPositions.push(member.position);
+      console.log(`[callin-db] Matched: "${otwpName}" → ${member.lastName}, ${member.firstName} pos ${member.position}`);
+    } else {
+      console.log(`[callin-db] No match for: "${otwpName}" (last: ${lastName}, first: ${firstName})`);
     }
   }
 
