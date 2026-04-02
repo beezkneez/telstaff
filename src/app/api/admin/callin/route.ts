@@ -55,11 +55,18 @@ export async function GET(req: Request) {
 
   if (action === "stats") {
     const counts = await Promise.all(
-      ["1", "2", "3", "4"].map(async (p) => ({
-        platoon: p,
-        members: await prisma.callInMember.count({ where: { platoon: p, active: true } }),
-        state: await prisma.callInState.findUnique({ where: { platoon: p } }),
-      }))
+      ["1", "2", "3", "4"].map(async (p) => {
+        const state = await prisma.callInState.findUnique({ where: { platoon: p } });
+        const currentMember = state ? await prisma.callInMember.findFirst({
+          where: { platoon: p, position: state.currentUpPos },
+        }) : null;
+        return {
+          platoon: p,
+          members: await prisma.callInMember.count({ where: { platoon: p, active: true } }),
+          state,
+          currentName: currentMember ? `${currentMember.lastName}${currentMember.firstName ? `, ${currentMember.firstName}` : ""}` : null,
+        };
+      })
     );
     return NextResponse.json(counts);
   }

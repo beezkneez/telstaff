@@ -152,12 +152,14 @@ export default function AdminPage() {
       fetch("/api/admin?action=users").then((r) => r.json()),
       fetch("/api/admin?action=settings").then((r) => r.json()),
       fetch("/api/admin?action=cache-stats").then((r) => r.json()),
+      fetch("/api/admin/callin?action=stats").then((r) => r.json()),
     ])
-      .then(([u, s, c]) => {
+      .then(([u, s, c, ci]) => {
         if (u.error) throw new Error(u.error);
         setUsers(u);
         setSettings(s);
         setCacheStats(c);
+        if (Array.isArray(ci)) setCallInStates(ci);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -214,6 +216,9 @@ export default function AdminPage() {
 
   const [scraping, setScraping] = useState(false);
   const [scrapeProgress, setScrapeProgress] = useState(0);
+  const [callInStates, setCallInStates] = useState<{ platoon: string; members: number; state: { currentUpPos: number; lastOtwpName: string | null } | null; currentName: string | null }[]>([]);
+  const [nextUpOverrides, setNextUpOverrides] = useState<Record<string, string>>({});
+  const [nextUpSuggestions, setNextUpSuggestions] = useState<Record<string, { position: number; lastName: string; firstName: string | null }[]>>({});
 
   async function triggerScrape() {
     setScraping(true);
@@ -248,6 +253,30 @@ export default function AdminPage() {
       clearInterval(interval);
       setScraping(false);
     }, 600000);
+  }
+
+  async function searchNextUp(platoon: string, query: string) {
+    setNextUpOverrides((prev) => ({ ...prev, [platoon]: query }));
+    if (query.length < 2) { setNextUpSuggestions((prev) => ({ ...prev, [platoon]: [] })); return; }
+    const res = await fetch(`/api/admin/callin?action=search&q=${encodeURIComponent(query)}`);
+    if (res.ok) {
+      const data = await res.json();
+      setNextUpSuggestions((prev) => ({ ...prev, [platoon]: data.filter((m: { platoon: string }) => m.platoon === platoon) }));
+    }
+  }
+
+  async function setNextUp(platoon: string, position: number, name: string) {
+    await fetch("/api/admin/callin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "set-current-up", platoon, position }),
+    });
+    setNextUpOverrides((prev) => ({ ...prev, [platoon]: "" }));
+    setNextUpSuggestions((prev) => ({ ...prev, [platoon]: [] }));
+    // Refresh states
+    const ci = await fetch("/api/admin/callin?action=stats").then((r) => r.json());
+    if (Array.isArray(ci)) setCallInStates(ci);
+    showMessage(`PLT-${platoon} next up set to ${name} (pos ${position})`);
   }
 
   async function matchUsers() {
@@ -514,6 +543,63 @@ export default function AdminPage() {
                 </p>
                 <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mt-1">Last OTWP Scrape</p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Next Up Override */}
+        {callInStates.length > 0 && (
+          <div className="bg-surface border border-border animate-fade-slide-up delay-200">
+            <div className="px-4 py-3 border-b border-border bg-surface-raised/50">
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
+                Next Up — By Platoon
+              </h2>
+            </div>
+            <div className="p-4 space-y-4">
+              {["1", "2", "3", "4"].map((plt) => {
+                const ci = callInStates.find((c) => c.platoon === plt);
+                const currentPos = ci?.state?.currentUpPos || 1;
+                const suggestions = nextUpSuggestions[plt] || [];
+
+                return (
+                  <div key={plt} className="border border-border-subtle p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3" style={{ backgroundColor: `var(--platoon-${plt})` }} />
+                        <span className="font-mono text-sm font-bold">PLT-{plt}</span>
+                        <span className="font-mono text-[10px] text-muted">{ci?.members || 0} members</span>
+                      </div>
+                      <span className="font-mono text-xs text-ember">
+                        Next up: {ci?.currentName || `Pos #${currentPos}`}
+                        <span className="text-muted ml-1">(#{currentPos})</span>
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={nextUpOverrides[plt] || ""}
+                        onChange={(e) => searchNextUp(plt, e.target.value)}
+                        placeholder="Type name to override next up..."
+                        className="w-full px-3 py-2 bg-background border border-border font-mono text-xs text-foreground placeholder:text-muted/50"
+                      />
+                      {suggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-surface-raised border border-border z-50 max-h-40 overflow-y-auto">
+                          {suggestions.map((s) => (
+                            <button
+                              key={s.position}
+                              onClick={() => setNextUp(plt, s.position, `${s.lastName}${s.firstName ? `, ${s.firstName}` : ""}`)}
+                              className="w-full text-left px-3 py-2 font-mono text-xs hover:bg-surface-overlay transition-colors flex justify-between"
+                            >
+                              <span>{s.lastName}{s.firstName ? `, ${s.firstName}` : ""}</span>
+                              <span className="text-muted">Pos #{s.position}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
