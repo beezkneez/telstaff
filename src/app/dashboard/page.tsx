@@ -88,35 +88,27 @@ export default function DashboardPage() {
             const name = data.profile.name || "";
             setUserName(name);
 
-            // Fast search: find user across all platoons in one DB query
-            try {
-              const findRes = await fetch(`/api/stations/find-me?name=${encodeURIComponent(name)}&date=${selectedDate}`);
-              if (findRes.ok) {
-                const findData = await findRes.json();
-                if (findData.found) {
-                  setPlatoon(findData.platoon);
-                  setStation(findData.station);
-                } else {
-                  // User not found on roster — platoon is likely off duty
-                  // Switch to the on-duty day-shift platoon in all-stations view
-                  const rotRes = await fetch(`/api/rotation?date=${selectedDate}&platoon=${plt}`);
-                  if (rotRes.ok) {
-                    const rotData = await rotRes.json();
-                    if (!rotData.isWorking && rotData.onShift?.dayShift) {
-                      setPlatoon(rotData.onShift.dayShift);
-                      setViewMode("all-stations");
-                    } else {
-                      setPlatoon(plt);
-                    }
-                  } else {
-                    setPlatoon(plt);
+            // Check rotation first (pure math, no scrape needed)
+            const rotRes = await fetch(`/api/rotation?date=${selectedDate}&platoon=${plt}`);
+            const rotData = rotRes.ok ? await rotRes.json() : null;
+
+            if (rotData && !rotData.isWorking && rotData.onShift?.dayShift) {
+              // User's platoon is off — show on-duty day-shift platoon in all-stations
+              setPlatoon(rotData.onShift.dayShift);
+              setViewMode("all-stations");
+            } else {
+              // User's platoon is on shift — try to find their station
+              setPlatoon(plt);
+              try {
+                const findRes = await fetch(`/api/stations/find-me?name=${encodeURIComponent(name)}&date=${selectedDate}`);
+                if (findRes.ok) {
+                  const findData = await findRes.json();
+                  if (findData.found) {
+                    setPlatoon(findData.platoon);
+                    setStation(findData.station);
                   }
                 }
-              } else {
-                setPlatoon(plt);
-              }
-            } catch {
-              setPlatoon(plt);
+              } catch {}
             }
           } else {
             setPlatoon("1");
