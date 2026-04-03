@@ -283,9 +283,28 @@ async function parseRosterPage(
     return results;
   }, platoon);
 
+  // Grab headcount total directly from Telestaff
+  const headCount = await page.evaluate(() => {
+    const el = document.querySelector(".headCountTotal");
+    return el ? parseInt(el.textContent?.trim() || "0", 10) : null;
+  });
+  console.log("[scraper] Telestaff headcount:", headCount);
+
   console.log("[scraper] Parsed", stations.length, "stations with",
     stations.reduce((sum, s) => sum + s.trucks.length, 0), "trucks and",
     stations.reduce((sum, s) => sum + s.trucks.reduce((t, u) => t + u.crew.length, 0), 0), "crew");
+
+  // Store headcount as a synthetic station 0 entry so it gets cached
+  if (headCount != null) {
+    stations.push({
+      station: 0,
+      district: 0,
+      platoon,
+      date: date || formatDate(),
+      trucks: [{ truck: "_headcount", type: "Meta", phoneNumber: "", crew: [] }],
+      headCount,
+    } as any);
+  }
 
   return stations as StationStaffing[];
 }
