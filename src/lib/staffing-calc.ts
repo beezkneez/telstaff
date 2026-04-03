@@ -38,14 +38,25 @@ function isOffRoster(t: TruckData): boolean {
   return t.type === "OffRoster" || /^ff\s*\d/i.test(t.truck);
 }
 
+const SUPPORT_RANKS: Record<string, boolean> = {
+  "sr captain investigator": true,
+  "captain investigator": true,
+  "investigator": true,
+  ".sr captain investigator": true,
+  ".captain investigator": true,
+  ".investigator": true,
+  "ecs captain": true,
+  "emergency communications specialist": true,
+  "ecs q": true,
+  ".ecs captain": true,
+  ".emergency communications specialist": true,
+  ".ecs q": true,
+  "duty office staff": true,
+  ".duty office staff": true,
+};
+
 function isSupportRank(rank: string): boolean {
-  const lower = rank.toLowerCase().trim();
-  return (
-    lower.includes("investigator") ||
-    lower.includes("ecs") ||
-    lower.includes("emergency communications") ||
-    lower.includes("duty office")
-  );
+  return SUPPORT_RANKS[rank.toLowerCase().trim()] === true;
 }
 
 function isCaptainRank(rank: string): boolean {
