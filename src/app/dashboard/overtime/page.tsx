@@ -138,7 +138,7 @@ export default function OvertimePage() {
             <div className="flex items-center justify-between p-3 bg-amber/5 border border-amber/20 animate-fade-slide-up">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-amber" />
-                <span className="font-mono text-xs text-amber">Staffing data may be outdated — last scraped 4+ hours ago</span>
+                <span className="font-mono text-xs text-amber">Staffing data may be outdated — last scraped 8+ hours ago</span>
               </div>
               <button
                 onClick={async () => {
