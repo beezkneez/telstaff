@@ -267,7 +267,6 @@ export async function GET(req: Request) {
   const allEligibleDetails = next6OffDetails;
   try {
     for (const detail of allEligibleDetails) {
-      if (!detail.eligible) continue;
       const dateObj = new Date(detail.date + "T00:00:00Z");
       const withinScrapeWindow = detail.date <= scrapeHorizonStr;
 
