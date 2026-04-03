@@ -294,8 +294,12 @@ export default function OvertimePage() {
                 {data.next6OffDetails.map((day, i) => {
                   const dateObj = new Date(day.date + "T12:00:00");
                   const dayLabel = dateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-                  const dayShiftHoles = data.shortfalls?.filter((sf) => sf.date === day.date && sf.shift === "day").reduce((s, sf) => s + sf.ffHoles, 0) || 0;
-                  const nightShiftHoles = data.shortfalls?.filter((sf) => sf.date === day.date && sf.shift === "night").reduce((s, sf) => s + sf.ffHoles, 0) || 0;
+                  const dayShortfalls = data.shortfalls?.filter((sf) => sf.date === day.date && sf.shift === "day") || [];
+                  const nightShortfalls = data.shortfalls?.filter((sf) => sf.date === day.date && sf.shift === "night") || [];
+                  const dayShiftHoles = dayShortfalls.reduce((s, sf) => s + sf.ffHoles, 0);
+                  const nightShiftHoles = nightShortfalls.reduce((s, sf) => s + sf.ffHoles, 0);
+                  const hasDayData = dayShortfalls.length > 0;
+                  const hasNightData = nightShortfalls.length > 0;
 
                   return (
                     <div key={day.date} className={`flex items-center justify-between px-3 py-2.5 ${day.eligible ? "bg-surface-raised/50" : "opacity-50"}`}>
@@ -323,14 +327,14 @@ export default function OvertimePage() {
                               PLT-{day.nightShiftPlatoon}
                             </span>
                           </div>
-                          {dayShiftHoles !== 0 && (
-                            <span className={`font-mono text-[10px] font-bold ${dayShiftHoles > 0 ? "text-amber" : "text-success"}`}>
-                              {dayShiftHoles > 0 ? dayShiftHoles : `+${Math.abs(dayShiftHoles)}`}D
+                          {hasDayData && (
+                            <span className={`font-mono text-[10px] font-bold ${dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                              {dayShiftHoles > 0 ? `${dayShiftHoles}D` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}D` : "= D"}
                             </span>
                           )}
-                          {nightShiftHoles !== 0 && (
-                            <span className={`font-mono text-[10px] font-bold ${nightShiftHoles > 0 ? "text-platoon-3" : "text-success"}`}>
-                              {nightShiftHoles > 0 ? nightShiftHoles : `+${Math.abs(nightShiftHoles)}`}N
+                          {hasNightData && (
+                            <span className={`font-mono text-[10px] font-bold ${nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                              {nightShiftHoles > 0 ? `${nightShiftHoles}N` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}N` : "= N"}
                             </span>
                           )}
                         </div>
