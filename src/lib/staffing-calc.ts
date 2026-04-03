@@ -95,13 +95,19 @@ export function calculateShortfall(
     if (station.station >= 900) continue;
 
     for (const truck of station.trucks) {
-      if (isOffRoster(truck)) continue;
+      const offRoster = isOffRoster(truck);
 
       // Filter to active crew only
       const activeCrew = truck.crew.filter((c) => {
         if (isSupportRank(c.rank || "")) return false;
         return !isOffRosterStatus(c.status || "");
       });
+
+      // Off-roster trucks: count crew toward total but skip truck-level shortfall
+      if (offRoster) {
+        totalActual += activeCrew.length;
+        continue;
+      }
       const captains = activeCrew.filter((c) => isCaptainRank(c.rank || ""));
       const ffs = activeCrew.filter((c) => !isCaptainRank(c.rank || ""));
 
