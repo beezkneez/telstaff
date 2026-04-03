@@ -203,31 +203,34 @@ export function initCron(): void {
   if (initialized) return;
   initialized = true;
 
-  // 6:30 AM MT = 12:30 UTC (pre-shift)
-  cron.schedule("30 12 * * *", () => {
+  // Use America/Edmonton timezone so DST is handled automatically
+  const tz = "America/Edmonton";
+
+  // 6:30 AM MT (pre-shift)
+  cron.schedule("30 6 * * *", () => {
     console.log("[cron] Running 6:30 AM scrape...");
     runNightlyScrape().catch((err) => console.error("[cron] 6:30 AM error:", err));
-  });
+  }, { timezone: tz });
 
-  // 7:00 AM MT = 13:00 UTC (shift start)
-  cron.schedule("0 13 * * *", () => {
+  // 7:00 AM MT (shift start)
+  cron.schedule("0 7 * * *", () => {
     console.log("[cron] Running 7 AM scrape...");
     runNightlyScrape().catch((err) => console.error("[cron] 7 AM error:", err));
-  });
+  }, { timezone: tz });
 
-  // 4:30 PM MT = 22:30 UTC (pre-shift)
-  cron.schedule("30 22 * * *", () => {
+  // 4:30 PM MT (pre-shift)
+  cron.schedule("30 16 * * *", () => {
     console.log("[cron] Running 4:30 PM scrape...");
     runNightlyScrape().catch((err) => console.error("[cron] 4:30 PM error:", err));
-  });
+  }, { timezone: tz });
 
-  // 5:00 PM MT = 23:00 UTC (shift start)
-  cron.schedule("0 23 * * *", () => {
+  // 5:00 PM MT (shift start)
+  cron.schedule("0 17 * * *", () => {
     console.log("[cron] Running 5 PM scrape...");
     runNightlyScrape().catch((err) => console.error("[cron] 5 PM error:", err));
-  });
+  }, { timezone: tz });
 
-  console.log("[cron] Scheduled: 6:30 AM, 7:00 AM, 4:30 PM, 5:00 PM MT daily");
+  console.log("[cron] Scheduled: 6:30 AM, 7:00 AM, 4:30 PM, 5:00 PM (America/Edmonton)");
 
   // Run immediately on startup if no recent data
   setTimeout(() => {
