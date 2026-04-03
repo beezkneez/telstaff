@@ -321,6 +321,11 @@ export default function OvertimePage() {
                             style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>
                             PLT-{day.dayShiftPlatoon}
                           </span>
+                          {hasDayData && (
+                            <span className={`font-mono text-[10px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                              [{dayNoData ? "—" : dayShiftHoles > 0 ? `-${dayShiftHoles}` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}` : "="}]
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono text-[10px] text-platoon-3 tracking-wider">NIGHT</span>
@@ -328,17 +333,12 @@ export default function OvertimePage() {
                             style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>
                             PLT-{day.nightShiftPlatoon}
                           </span>
+                          {hasNightData && (
+                            <span className={`font-mono text-[10px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                              [{nightNoData ? "—" : nightShiftHoles > 0 ? `-${nightShiftHoles}` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}` : "="}]
+                            </span>
+                          )}
                         </div>
-                        {hasDayData && (
-                          <span className={`font-mono text-[10px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
-                            {dayNoData ? "— D" : dayShiftHoles > 0 ? `${dayShiftHoles}D` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}D` : "= D"}
-                          </span>
-                        )}
-                        {hasNightData && (
-                          <span className={`font-mono text-[10px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
-                            {nightNoData ? "— N" : nightShiftHoles > 0 ? `${nightShiftHoles}N` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}N` : "= N"}
-                          </span>
-                        )}
                       </div>
                     </div>
                   );
