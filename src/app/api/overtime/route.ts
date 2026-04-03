@@ -292,9 +292,7 @@ export async function GET(req: Request) {
 
           const stations = cached.map((c) => c.data as unknown as { station: number; trucks: { truck: string; type: string; crew: { name: string; rank: string; status?: string }[] }[] });
           const shortfall = calculateShortfall(stations, shiftPlatoon, detail.date, shiftType);
-          if (shortfall.totalHoles > 0) {
-            shortfalls.push(shortfall);
-          }
+          shortfalls.push(shortfall);
         } else if (withinScrapeWindow) {
           dataStale = true; // no data within window that should have been scraped
         }

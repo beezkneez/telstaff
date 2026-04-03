@@ -323,8 +323,16 @@ export default function OvertimePage() {
                               PLT-{day.nightShiftPlatoon}
                             </span>
                           </div>
-                          {dayShiftHoles > 0 && <span className="font-mono text-[10px] text-amber font-bold">{dayShiftHoles}D</span>}
-                          {nightShiftHoles > 0 && <span className="font-mono text-[10px] text-platoon-3 font-bold">{nightShiftHoles}N</span>}
+                          {dayShiftHoles !== 0 && (
+                            <span className={`font-mono text-[10px] font-bold ${dayShiftHoles > 0 ? "text-amber" : "text-success"}`}>
+                              {dayShiftHoles > 0 ? dayShiftHoles : `+${Math.abs(dayShiftHoles)}`}D
+                            </span>
+                          )}
+                          {nightShiftHoles !== 0 && (
+                            <span className={`font-mono text-[10px] font-bold ${nightShiftHoles > 0 ? "text-platoon-3" : "text-success"}`}>
+                              {nightShiftHoles > 0 ? nightShiftHoles : `+${Math.abs(nightShiftHoles)}`}N
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>

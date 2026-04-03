@@ -144,11 +144,11 @@ export function calculateShortfall(
   // to fill a captain spot creates an FF hole. Total call-ins needed stays the same.
   totalCaptainHoles = captainHolesRemaining;
 
-  // Simple hole calculation: min staffing - active crew = holes
-  // This matches reality better than per-truck required crew calculation
+  // Simple hole calculation: min staffing - active crew
+  // Positive = understaffed (holes), negative = overstaffed (surplus)
   const { DEFAULT_MIN_STAFFING } = require("./prediction");
   const minStaffing = DEFAULT_MIN_STAFFING; // 216
-  const simpleHoles = Math.max(0, minStaffing - totalActual);
+  const staffingDelta = minStaffing - totalActual;
 
   return {
     date,
@@ -156,9 +156,9 @@ export function calculateShortfall(
     shift,
     requiredCrew: minStaffing,
     actualCrew: totalActual,
-    ffHoles: simpleHoles,
+    ffHoles: staffingDelta,
     captainHoles: 0, // captains handled internally
-    totalHoles: simpleHoles,
+    totalHoles: staffingDelta,
     truckBreakdown: truckBreakdown.sort((a, b) => b.shortFF - a.shortFF),
   };
 }
