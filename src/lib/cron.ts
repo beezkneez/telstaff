@@ -154,9 +154,9 @@ export async function runNightlyScrape(): Promise<void> {
 
   const now = new Date();
 
-  // Build list of dates: 6 days back through 10 days ahead (17 days total)
+  // Build list of dates: 6 days back through 16 days ahead (full rotation cycle)
   const dates: string[] = [];
-  for (let i = -6; i <= 10; i++) {
+  for (let i = -6; i <= 16; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + i);
     dates.push(d.toISOString().split("T")[0]);

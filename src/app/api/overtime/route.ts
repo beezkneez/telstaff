@@ -262,7 +262,7 @@ export async function GET(req: Request) {
   let dataStale = false;
   const staleThreshold = 8 * 60 * 60 * 1000; // 8 hours
   const scrapeHorizon = new Date();
-  scrapeHorizon.setDate(scrapeHorizon.getDate() + 10);
+  scrapeHorizon.setDate(scrapeHorizon.getDate() + 16);
   const scrapeHorizonStr = scrapeHorizon.toISOString().split("T")[0];
   const allEligibleDetails = next6OffDetails;
   try {
