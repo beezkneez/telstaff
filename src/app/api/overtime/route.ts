@@ -293,6 +293,7 @@ export async function GET(req: Request) {
 
           const stations = cached.map((c) => c.data as unknown as { station: number; trucks: { truck: string; type: string; crew: { name: string; rank: string; status?: string }[] }[] });
           const shortfall = calculateShortfall(stations, shiftPlatoon, detail.date, shiftType);
+          console.log(`[overtime] ${detail.date} ${shiftType} PLT-${shiftPlatoon}: ${cached.length} cache rows, ${stations.length} stations, stations: [${stations.map(s => s.station).join(",")}], actual=${shortfall.actualCrew}/216, delta=${shortfall.ffHoles}`);
           shortfalls.push(shortfall);
         } else {
           // No cached data — push a placeholder so UI knows we checked
