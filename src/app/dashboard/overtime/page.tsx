@@ -326,12 +326,12 @@ export default function OvertimePage() {
                             PLT-{day.dayShiftPlatoon}
                           </span>
                           {hasDayData && (
-                            <span
-                              className={`font-mono text-[10px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}
-                              title={dayActual != null ? `${dayActual} on roster / 216 min` : undefined}
-                            >
-                              [{dayNoData ? "—" : dayShiftHoles > 0 ? `-${dayShiftHoles}` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}` : "="}]
-                            </span>
+                            <>
+                              <span className={`font-mono text-[10px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                                [{dayNoData ? "—" : dayShiftHoles > 0 ? `-${dayShiftHoles}` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}` : "="}]
+                              </span>
+                              {dayActual != null && <span className="font-mono text-[9px] text-muted/50">{dayActual}/216</span>}
+                            </>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -341,12 +341,12 @@ export default function OvertimePage() {
                             PLT-{day.nightShiftPlatoon}
                           </span>
                           {hasNightData && (
-                            <span
-                              className={`font-mono text-[10px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}
-                              title={nightActual != null ? `${nightActual} on roster / 216 min` : undefined}
-                            >
-                              [{nightNoData ? "—" : nightShiftHoles > 0 ? `-${nightShiftHoles}` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}` : "="}]
-                            </span>
+                            <>
+                              <span className={`font-mono text-[10px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                                [{nightNoData ? "—" : nightShiftHoles > 0 ? `-${nightShiftHoles}` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}` : "="}]
+                              </span>
+                              {nightActual != null && <span className="font-mono text-[9px] text-muted/50">{nightActual}/216</span>}
+                            </>
                           )}
                         </div>
                       </div>
