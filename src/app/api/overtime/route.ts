@@ -241,8 +241,10 @@ export async function GET(req: Request) {
     console.error("[overtime] YTD tally error:", err);
   }
 
-  // Get next 6-off details
-  const next6Off = getNext6Off(date, userPlatoon);
+  // Get current or next 6-off details (use current if we're in one)
+  const next6Off = userShift.type === "off-long"
+    ? getLast6Off(date, userPlatoon)
+    : getNext6Off(date, userPlatoon);
   const next6OffDetails = next6Off.dates.map((d, i) => {
     const shifts = getOnShiftPlatoons(d);
     const stat = isNearStatHoliday(d);
