@@ -50,6 +50,8 @@ interface OvertimeData {
     ffHoles: number;
     captainHoles: number;
     totalHoles: number;
+    requiredCrew?: number;
+    actualCrew?: number;
     noData?: boolean;
   }[];
 }
@@ -301,6 +303,8 @@ export default function OvertimePage() {
                   const nightNoData = nightShortfalls.length > 0 && nightShortfalls.every((sf) => sf.noData);
                   const dayShiftHoles = dayNoData ? 0 : dayShortfalls.filter((sf) => !sf.noData).reduce((s, sf) => s + sf.ffHoles, 0);
                   const nightShiftHoles = nightNoData ? 0 : nightShortfalls.filter((sf) => !sf.noData).reduce((s, sf) => s + sf.ffHoles, 0);
+                  const dayActual = dayShortfalls.find((sf) => !sf.noData)?.actualCrew;
+                  const nightActual = nightShortfalls.find((sf) => !sf.noData)?.actualCrew;
                   const hasDayData = dayShortfalls.length > 0;
                   const hasNightData = nightShortfalls.length > 0;
 
@@ -322,7 +326,10 @@ export default function OvertimePage() {
                             PLT-{day.dayShiftPlatoon}
                           </span>
                           {hasDayData && (
-                            <span className={`font-mono text-[10px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                            <span
+                              className={`font-mono text-[10px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}
+                              title={dayActual != null ? `${dayActual} on roster / 216 min` : undefined}
+                            >
                               [{dayNoData ? "—" : dayShiftHoles > 0 ? `-${dayShiftHoles}` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}` : "="}]
                             </span>
                           )}
@@ -334,7 +341,10 @@ export default function OvertimePage() {
                             PLT-{day.nightShiftPlatoon}
                           </span>
                           {hasNightData && (
-                            <span className={`font-mono text-[10px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                            <span
+                              className={`font-mono text-[10px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}
+                              title={nightActual != null ? `${nightActual} on roster / 216 min` : undefined}
+                            >
                               [{nightNoData ? "—" : nightShiftHoles > 0 ? `-${nightShiftHoles}` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}` : "="}]
                             </span>
                           )}
