@@ -146,7 +146,7 @@ export default function StationCard({
                   const isSUR = st.includes("sur");
                   const isRelSupp = st.includes("rel supp") || st.includes("rel support");
                   const statusBg = isUser ? "bg-ember/10 border-l-2 border-l-ember"
-                    : isSearchMatch ? "bg-amber/10 border-l-2 border-l-amber"
+                    : isSearchMatch ? "bg-amber/15 border-l-2 border-l-amber"
                     : isVac ? "bg-yellow-500/8"
                     : isTNW ? "bg-fuchsia-500/8"
                     : isTW ? "bg-fuchsia-500/8"
@@ -172,7 +172,7 @@ export default function StationCard({
                       }`}>
                         {member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
-                      <span className="font-mono text-sm truncate">
+                      <span className={`font-mono text-sm truncate ${isSearchMatch ? "text-amber font-semibold" : ""}`}>
                         {member.name}
                       </span>
                     </div>

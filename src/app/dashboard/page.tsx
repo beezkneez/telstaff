@@ -33,6 +33,8 @@ interface StationStaffing {
 
 interface ShiftInfo {
   type: string;
+  block: number;
+  dayInBlock: number;
   label: string;
 }
 
@@ -95,7 +97,20 @@ export default function DashboardPage() {
                   setPlatoon(findData.platoon);
                   setStation(findData.station);
                 } else {
-                  setPlatoon(plt);
+                  // User not found on roster — platoon is likely off duty
+                  // Switch to the on-duty day-shift platoon in all-stations view
+                  const rotRes = await fetch(`/api/rotation?date=${selectedDate}&platoon=${plt}`);
+                  if (rotRes.ok) {
+                    const rotData = await rotRes.json();
+                    if (!rotData.isWorking && rotData.onShift?.dayShift) {
+                      setPlatoon(rotData.onShift.dayShift);
+                      setViewMode("all-stations");
+                    } else {
+                      setPlatoon(plt);
+                    }
+                  } else {
+                    setPlatoon(plt);
+                  }
                 }
               } else {
                 setPlatoon(plt);
@@ -321,22 +336,36 @@ export default function DashboardPage() {
       )}
 
       {/* Rotation info banner */}
-      {isOff && !loading && (
+      {rotationInfo && !loading && (
         <div className="mb-4 p-4 bg-surface border border-border animate-fade-slide-up">
           <div className="flex items-center gap-3">
-            <span className="w-2 h-2 bg-amber" />
+            <span className={`w-2 h-2 ${rotationInfo.isWorking ? "bg-success" : "bg-amber"}`} />
             <div className="font-mono text-xs tracking-wider">
-              <span className="text-amber uppercase">PLT-{platoon} is off</span>
-              <span className="text-muted"> — {rotationInfo?.shift.label}</span>
-              {nextShift && (
-                <span className="text-foreground">
-                  {" "}// Next shift:{" "}
-                  {new Date(nextShift.date + "T12:00:00").toLocaleDateString(
-                    "en-US",
-                    { weekday: "short", month: "short", day: "numeric" }
-                  )}{" "}
-                  ({nextShift.type === "day" ? "Day" : "Night"} — Block{" "}
-                  {nextShift.block})
+              {rotationInfo.isWorking ? (
+                <span>
+                  <span className="text-success uppercase">PLT-{platoon} On Shift</span>
+                  <span className="text-muted"> — </span>
+                  <span className="text-foreground">
+                    {rotationInfo.shift.type === "day" ? "Day" : "Night"}{" "}
+                    {rotationInfo.shift.dayInBlock}/2
+                    {" "}— Block {rotationInfo.shift.block}
+                  </span>
+                </span>
+              ) : (
+                <span>
+                  <span className="text-amber uppercase">PLT-{platoon} is off</span>
+                  <span className="text-muted"> — {rotationInfo.shift.label}</span>
+                  {nextShift && (
+                    <span className="text-foreground">
+                      {" "}// Next shift:{" "}
+                      {new Date(nextShift.date + "T12:00:00").toLocaleDateString(
+                        "en-US",
+                        { weekday: "short", month: "short", day: "numeric" }
+                      )}{" "}
+                      ({nextShift.type === "day" ? "Day" : "Night"} — Block{" "}
+                      {nextShift.block})
+                    </span>
+                  )}
                 </span>
               )}
             </div>
@@ -533,7 +562,7 @@ export default function DashboardPage() {
             );
             return [
             {
-              value: allStations.length,
+              value: regularStations.length,
               label: "Stations",
               color: "text-ember",
             },
