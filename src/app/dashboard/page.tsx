@@ -517,7 +517,7 @@ export default function DashboardPage() {
               searchQuery={searchQuery}
             />
           ))}
-          {supportGroups.length > 0 && (
+          {supportGroups.length > 0 && !searchQuery && (
             <SupportStaffCard
               groups={supportGroups}
               animationDelay={Math.min(regularStations.length * 50, 500)}
