@@ -218,6 +218,18 @@ export function initCron(): void {
     runNightlyScrape().catch((err) => console.error("[cron] 7 AM error:", err));
   }, { timezone: tz });
 
+  // 10:00 AM MT (mid-morning update)
+  cron.schedule("0 10 * * *", () => {
+    console.log("[cron] Running 10 AM scrape...");
+    runNightlyScrape().catch((err) => console.error("[cron] 10 AM error:", err));
+  }, { timezone: tz });
+
+  // 1:00 PM MT (afternoon update)
+  cron.schedule("0 13 * * *", () => {
+    console.log("[cron] Running 1 PM scrape...");
+    runNightlyScrape().catch((err) => console.error("[cron] 1 PM error:", err));
+  }, { timezone: tz });
+
   // 4:30 PM MT (pre-shift)
   cron.schedule("30 16 * * *", () => {
     console.log("[cron] Running 4:30 PM scrape...");
@@ -230,7 +242,7 @@ export function initCron(): void {
     runNightlyScrape().catch((err) => console.error("[cron] 5 PM error:", err));
   }, { timezone: tz });
 
-  console.log("[cron] Scheduled: 6:30 AM, 7:00 AM, 4:30 PM, 5:00 PM (America/Edmonton)");
+  console.log("[cron] Scheduled: 6:30 AM, 7 AM, 10 AM, 1 PM, 4:30 PM, 5 PM (America/Edmonton)");
 
   // Run immediately on startup if no recent data
   setTimeout(() => {
