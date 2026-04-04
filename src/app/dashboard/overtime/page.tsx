@@ -43,6 +43,7 @@ interface OvertimeData {
     factors: { name: string; value: string; impact: string }[];
   } | null;
   dataStale: boolean;
+  lastScrapedAt: string | null;
   shortfalls: {
     date: string;
     platoon: string;
@@ -136,32 +137,40 @@ export default function OvertimePage() {
         </div>
       ) : data ? (
         <div className="space-y-4">
-          {/* Stale data warning */}
-          {data.dataStale && (
-            <div className="flex items-center justify-between p-3 bg-amber/5 border border-amber/20 animate-fade-slide-up">
+          {/* Scrape info bar — always visible */}
+          {(
+            <div className="flex items-center justify-between p-3 bg-surface border border-border animate-fade-slide-up">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-amber" />
-                <span className="font-mono text-xs text-amber">Staffing data may be outdated — last scraped 8+ hours ago</span>
+                <span className={`w-2 h-2 ${data.dataStale ? "bg-amber" : "bg-success"}`} />
+                <span className="font-mono text-[10px] text-muted tracking-wider">
+                  {data.lastScrapedAt ? (() => {
+                    const scraped = new Date(data.lastScrapedAt);
+                    const ago = Math.round((Date.now() - scraped.getTime()) / 60000);
+                    const timeStr = scraped.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Edmonton" });
+                    return `Last scraped ${timeStr} (${ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`})`;
+                  })() : "No scrape data available"}
+                </span>
+                <span className="font-mono text-[10px] text-muted/50">
+                  // Next: 6:30a, 7a, 10a, 1p, 4:30p, 5p
+                </span>
               </div>
               <button
                 onClick={async () => {
                   setLoading(true);
-                  // Just scrape today's on-shift platoon — fast single scrape
                   const todayPlatoon = data.onShift.dayShift || data.onShift.nightShift || "1";
                   await fetch("/api/stations/refresh", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ platoon: todayPlatoon, date: selectedDate }),
                   }).catch(() => {});
-                  // Reload overtime data
                   const res = await fetch(`/api/overtime?date=${selectedDate}`);
                   const d = await res.json();
                   setData(d);
                   setLoading(false);
                 }}
-                className="px-3 py-1 font-mono text-[10px] tracking-wider uppercase bg-amber/20 border border-amber/30 text-amber hover:bg-amber/30 transition-all"
+                className="px-3 py-1 font-mono text-[10px] tracking-wider uppercase bg-surface-raised border border-border text-muted hover:text-foreground hover:border-ember/40 transition-all"
               >
-                Refresh Now
+                Rescrape Now
               </button>
             </div>
           )}

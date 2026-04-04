@@ -262,6 +262,7 @@ export async function GET(req: Request) {
   // Only flag stale for dates within the cron scrape window (today + 10 days)
   const shortfalls: StaffingShortfall[] = [];
   let dataStale = false;
+  let lastScrapedAt: string | null = null;
   const staleThreshold = 8 * 60 * 60 * 1000; // 8 hours
   const scrapeHorizon = new Date();
   scrapeHorizon.setDate(scrapeHorizon.getDate() + 16);
@@ -282,6 +283,13 @@ export async function GET(req: Request) {
         });
 
         if (cached.length > 0) {
+          // Track most recent scrape time (for today's data)
+          const newestScrape = cached.reduce((newest, c) =>
+            c.scrapedAt > newest ? c.scrapedAt : newest, cached[0].scrapedAt);
+          if (!lastScrapedAt || newestScrape.toISOString() > lastScrapedAt) {
+            lastScrapedAt = newestScrape.toISOString();
+          }
+
           // Check staleness only for dates within scrape window
           if (withinScrapeWindow) {
             const oldestScrape = cached.reduce((oldest, c) =>
@@ -364,6 +372,7 @@ export async function GET(req: Request) {
     prediction,
     shortfalls,
     dataStale,
+    lastScrapedAt,
     ytdNeeded,
     ytdWorked,
   });
