@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+
+interface MemberSuggestion {
+  id: number;
+  name: string;
+  platoon: string;
+  payrollNumber: string;
+}
 import Link from "next/link";
 
 export default function RegisterPage() {
@@ -17,6 +24,51 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<MemberSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const nameRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Search members as user types name
+  function handleNameChange(value: string) {
+    update("name", value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      const res = await fetch(`/api/members/search?q=${encodeURIComponent(value.trim())}`);
+      if (res.ok) {
+        const data: MemberSuggestion[] = await res.json();
+        setSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      }
+    }, 250);
+  }
+
+  function selectMember(member: MemberSuggestion) {
+    setForm((prev) => ({
+      ...prev,
+      name: member.name,
+      platoon: member.platoon,
+      payrollNumber: member.payrollNumber,
+    }));
+    setShowSuggestions(false);
+    setSuggestions([]);
+  }
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (nameRef.current && !nameRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -101,18 +153,36 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <div>
+            <div ref={nameRef} className="relative">
               <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
                 Full Name
               </label>
               <input
                 type="text"
                 value={form.name}
-                onChange={(e) => update("name", e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                 required
+                autoComplete="off"
                 className="w-full px-4 py-3 rounded-md bg-surface border border-border text-foreground placeholder:text-muted/50 transition-colors focus:border-ember/50"
-                placeholder="John Smith"
+                placeholder="Start typing your name..."
               />
+              {showSuggestions && (
+                <ul className="absolute z-50 w-full mt-1 rounded-md bg-surface border border-border shadow-lg max-h-48 overflow-y-auto">
+                  {suggestions.map((m) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        onClick={() => selectMember(m)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-ember/10 transition-colors flex justify-between items-center"
+                      >
+                        <span className="text-foreground">{m.name}</span>
+                        <span className="text-xs text-muted">PLT-{m.platoon}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div>
