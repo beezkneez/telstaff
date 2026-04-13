@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
-import { getCached, setCached, getInProgress, setInProgress } from "@/lib/cache";
+import { getCached, getCachedScrapedAt, setCached, getInProgress, setInProgress } from "@/lib/cache";
 import type { StationStaffing } from "@/lib/types";
 
 export async function GET(req: Request) {
@@ -21,7 +21,8 @@ export async function GET(req: Request) {
   const memCached = getCached(platoon, date);
   if (memCached) {
     console.log("[stations] Memory cache hit for platoon", platoon);
-    return NextResponse.json(memCached);
+    const scrapedAt = getCachedScrapedAt(platoon, date);
+    return NextResponse.json({ stations: memCached, scrapedAt });
   }
 
   // Check database cache (from nightly cron)
@@ -34,8 +35,9 @@ export async function GET(req: Request) {
     if (dbCached.length > 0) {
       const stations = dbCached.map((c) => c.data as unknown as StationStaffing);
       setCached(platoon, date, stations);
+      const scrapedAt = dbCached[0].scrapedAt.getTime();
       console.log("[stations] DB cache hit:", dbCached.length, "stations");
-      return NextResponse.json(stations);
+      return NextResponse.json({ stations, scrapedAt });
     }
   } catch (err) {
     console.error("[stations] DB cache read error:", err);
@@ -103,7 +105,8 @@ export async function GET(req: Request) {
 
   try {
     const stations = await scrapePromise;
-    return NextResponse.json(stations);
+    const scrapedAt = getCachedScrapedAt(platoon, date) || Date.now();
+    return NextResponse.json({ stations, scrapedAt });
   } catch (error) {
     console.error("[stations] Scraper error:", error);
     return NextResponse.json(

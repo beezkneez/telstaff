@@ -25,6 +25,13 @@ export function getCached(platoon: string, date: string): StationStaffing[] | nu
   return entry.stations;
 }
 
+export function getCachedScrapedAt(platoon: string, date: string): number | null {
+  const entry = cache.get(cacheKey(platoon, date));
+  if (!entry) return null;
+  if (Date.now() - entry.scrapedAt > CACHE_TTL) return null;
+  return entry.scrapedAt;
+}
+
 export function setCached(platoon: string, date: string, stations: StationStaffing[]): void {
   cache.set(cacheKey(platoon, date), {
     stations,

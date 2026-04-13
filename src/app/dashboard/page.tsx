@@ -65,6 +65,7 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [minStaffing, setMinStaffing] = useState(216);
+  const [scrapedAt, setScrapedAt] = useState<number | null>(null);
 
   // Load min staffing setting
   useEffect(() => {
@@ -157,10 +158,13 @@ export default function DashboardPage() {
       }
 
       const data = await res.json();
-      const stations: StationStaffing[] = Array.isArray(data)
-        ? data
-        : [data];
+      const stations: StationStaffing[] = data.stations
+        ? data.stations
+        : Array.isArray(data)
+          ? data
+          : [data];
       setAllStations(stations);
+      if (data.scrapedAt) setScrapedAt(data.scrapedAt);
 
       // Auto-detect user's current station from roster
       if (userName) {
@@ -288,11 +292,18 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider text-muted uppercase">
-              <span
-                className={`w-2 h-2 ${loading || refreshing ? "bg-amber" : "bg-success"} animate-pulse-ember`}
-              />
-              {loading ? "Scraping telestaff..." : refreshing ? "Refreshing..." : "Live feed // telestaff"}
+            <div className="flex flex-col items-end gap-0.5">
+              <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider text-muted uppercase">
+                <span
+                  className={`w-2 h-2 ${loading || refreshing ? "bg-amber" : "bg-success"} animate-pulse-ember`}
+                />
+                {loading ? "Scraping telestaff..." : refreshing ? "Refreshing..." : "Live feed // telestaff"}
+              </div>
+              {scrapedAt && !loading && (
+                <span className="font-mono text-[9px] tracking-wider text-muted/60">
+                  As of {new Date(scrapedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                </span>
+              )}
             </div>
             <button
               onClick={async () => {
