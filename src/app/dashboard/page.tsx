@@ -548,14 +548,17 @@ export default function DashboardPage() {
               if (st === "tw" || st === "twu") return false;
               return st.includes("tnw") || st.includes("vac") || st.includes("lieuo") || st.includes("sick") || st.includes(".sa") || st.includes("sur");
             };
-            // Count ops crew on active trucks excluding off-roster statuses
-            let onRoster = 0;
-            for (const s of regularStations) {
-              for (const t of s.trucks) {
-                if (isOffTruck(t)) {
-                  // Anyone on FF truck without an off-roster status counts as on roster
-                  onRoster += t.crew.filter((c) => !isOffStatus(c.status || "")).length;
-                } else {
+            // Use Telestaff's headcount if available (station 0 meta entry)
+            const metaStation = allStations.find((s) => s.station === 0);
+            const telestaffHeadCount = (metaStation as any)?.headCount;
+            let onRoster: number;
+            if (telestaffHeadCount != null && telestaffHeadCount > 0) {
+              onRoster = telestaffHeadCount;
+            } else {
+              // Fallback: count ops crew manually
+              onRoster = 0;
+              for (const s of regularStations) {
+                for (const t of s.trucks) {
                   onRoster += t.crew.filter((c) => !isOffStatus(c.status || "")).length;
                 }
               }
