@@ -29,12 +29,14 @@ export default function Navbar() {
             {[
               { href: "/dashboard", label: "OPS" },
               { href: "/dashboard/overtime", label: "OVERTIME" },
-              { href: "/dashboard/overtime/analytics", label: "ANALYTICS" },
               { href: "/dashboard/calendar", label: "CALENDAR" },
               { href: "/dashboard/paybacks", label: "PAYBACKS" },
               { href: "/profile", label: "PROFILE" },
               ...((session?.user as { isAdmin?: boolean })?.isAdmin
-                ? [{ href: "/dashboard/admin", label: "ADMIN" }]
+                ? [
+                    { href: "/dashboard/overtime/analytics", label: "ANALYTICS" },
+                    { href: "/dashboard/admin", label: "ADMIN" },
+                  ]
                 : []),
             ].map((item) => (
               <Link
@@ -81,12 +83,14 @@ export default function Navbar() {
             {[
               { href: "/dashboard", label: "Operations" },
               { href: "/dashboard/overtime", label: "Overtime" },
-              { href: "/dashboard/overtime/analytics", label: "Analytics" },
               { href: "/dashboard/calendar", label: "Calendar" },
               { href: "/dashboard/paybacks", label: "Paybacks" },
               { href: "/profile", label: "Profile" },
               ...((session?.user as { isAdmin?: boolean })?.isAdmin
-                ? [{ href: "/dashboard/admin", label: "Admin" }]
+                ? [
+                    { href: "/dashboard/overtime/analytics", label: "Analytics" },
+                    { href: "/dashboard/admin", label: "Admin" },
+                  ]
                 : []),
             ].map((item) => (
               <Link

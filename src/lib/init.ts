@@ -17,6 +17,18 @@ export function initApp() {
         }).catch(console.error);
       }
     }).catch(console.error);
+
+    // Ensure judbeasley@gmail.com is always admin
+    prisma.user.findUnique({ where: { email: "judbeasley@gmail.com" } }).then((adminUser) => {
+      if (adminUser && !adminUser.isAdmin) {
+        prisma.user.update({
+          where: { id: adminUser.id },
+          data: { isAdmin: true },
+        }).then(() => {
+          console.log("[init] Set judbeasley@gmail.com as admin");
+        }).catch(console.error);
+      }
+    }).catch(console.error);
   });
 
   // Start cron jobs

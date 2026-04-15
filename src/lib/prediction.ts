@@ -104,6 +104,15 @@ export function getCallThroughRate(date: string): { ratio: number; label: string
   }
 }
 
+export interface RecentShiftHole {
+  platoon: string;
+  shift: string;
+  date: string;
+  ffHoles: number;
+  actualCrew: number;
+  requiredCrew: number;
+}
+
 export interface PredictionInput {
   positionsAhead: number;
   last6OffTotal: number;
@@ -113,6 +122,7 @@ export interface PredictionInput {
   historicalAvgPerShift?: number;
   recentTrend?: "rising" | "stable" | "falling";
   yesterdayRatio?: number; // actual names-dialed/spots-filled from yesterday
+  recentShiftHoles?: RecentShiftHole[]; // last 2 shifts per working platoon — weighted 70%
 }
 
 export interface Scenario {
@@ -146,11 +156,22 @@ export interface PredictionResult {
 }
 
 export function predictOvertime(input: PredictionInput): PredictionResult {
-  const { positionsAhead, last6OffTotal, todayOtwp, todayHoles, date, historicalAvgPerShift, recentTrend, yesterdayRatio } = input;
+  const { positionsAhead, last6OffTotal, todayOtwp, todayHoles, date, historicalAvgPerShift, recentTrend, yesterdayRatio, recentShiftHoles } = input;
   const d = new Date(date + "T12:00:00");
   const dayOfWeek = d.toLocaleDateString("en-US", { weekday: "long" });
   const stat = isNearStatHoliday(date);
   const { ratio: baseRatio, label: baseLabel } = getCallThroughRate(date);
+
+  // 70/30 weighted hole estimate: recent shift holes (70%) + historical avg (30%)
+  let weightedHoles: number;
+  let recentAvg: number | null = null;
+  if (recentShiftHoles && recentShiftHoles.length > 0) {
+    recentAvg = recentShiftHoles.reduce((s, h) => s + h.ffHoles, 0) / recentShiftHoles.length;
+    const historicalAvg = last6OffTotal > 0 ? last6OffTotal / 8 : recentAvg;
+    weightedHoles = Math.round(recentAvg * 0.7 + historicalAvg * 0.3);
+  } else {
+    weightedHoles = todayHoles !== null ? todayHoles : (last6OffTotal > 0 ? Math.round(last6OffTotal / 8) : 8);
+  }
 
   // Dynamic adjustment based on historical trends
   let dynamicMultiplier = 1.0;
@@ -190,7 +211,11 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
 
   // Best estimate of call-ins
   const avgPerShift = last6OffTotal > 0 ? last6OffTotal / 8 : 8;
-  const estimatedSlots = todayOtwp !== null ? todayOtwp : Math.round(avgPerShift);
+  const estimatedSlots = todayOtwp !== null
+    ? todayOtwp
+    : (recentShiftHoles && recentShiftHoles.length > 0)
+      ? weightedHoles
+      : Math.round(avgPerShift);
   const namesTheyWillCall = Math.ceil(estimatedSlots * callThroughRatio);
   const totalNamesOver6Off = Math.ceil(last6OffTotal * callThroughRatio);
 
@@ -268,9 +293,8 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     explanation += ` Note: ${stat.holiday} is ${stat.daysAway} days away — this typically reduces bookoffs and overtime demand around these dates.`;
   }
 
-  // Build scenarios based on TONIGHT'S actual holes (most important)
-  // Falls back to average from last 6-off if no current hole data
-  const currentHoles = todayHoles !== null ? todayHoles : (last6OffTotal > 0 ? Math.round(last6OffTotal / 8) : 8);
+  // Build scenarios based on weighted hole estimate (70% recent shifts, 30% historical)
+  const currentHoles = todayHoles !== null ? todayHoles : weightedHoles;
   const scenarioRates = [
     { label: "High acceptance", rate: "1 in 2", ratio: 2 },
     { label: "Good acceptance (weekday)", rate: "1 in 3", ratio: 3 },
@@ -311,6 +335,7 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     { name: "Near stat holiday", value: stat.near ? `${stat.holiday} (${stat.daysAway}d)` : "No", impact: stat.near ? "Reduces demand" : "Normal demand" },
     { name: "Historical avg/shift", value: historicalAvgPerShift ? String(Math.round(historicalAvgPerShift * 10) / 10) : "N/A", impact: "3-month average" },
     { name: "Trend", value: recentTrend || "Unknown", impact: recentTrend === "rising" ? "+10% ratio" : recentTrend === "falling" ? "-10% ratio" : "No change" },
+    { name: "Recent shift holes (70%)", value: recentAvg !== null ? `avg ${recentAvg.toFixed(1)}` : "N/A", impact: recentAvg !== null ? "Weighted 70% recent, 30% historical" : "Using historical only" },
   ];
 
   return {

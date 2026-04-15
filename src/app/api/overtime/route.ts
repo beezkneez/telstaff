@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off, getNext6Off } from "@/lib/rotation";
 import { getCallInList, findMemberOnList, getPositionsAhead as getDbPositionsAhead } from "@/lib/callin-db";
 import { getRecentHistory } from "@/lib/callin-db";
-import { predictOvertime, isNearStatHoliday } from "@/lib/prediction";
+import { predictOvertime, isNearStatHoliday, type RecentShiftHole } from "@/lib/prediction";
 import { calculateShortfall, type StaffingShortfall } from "@/lib/staffing-calc";
 
 export async function GET(req: Request) {
@@ -329,7 +329,50 @@ export async function GET(req: Request) {
 
   console.log("[overtime] Shortfalls:", shortfalls.map((sf) => `${sf.date} ${sf.shift} PLT-${sf.platoon}: ${sf.ffHoles}FF ${sf.captainHoles}Capt`).join(", "));
 
-  // Update prediction with the NEXT shift's holes from the upcoming 6-off
+  // Compute recent shift holes — last 2 completed shifts for each working platoon
+  // These are the most current, real data and get 70% weight in the prediction
+  const recentShiftHoles: RecentShiftHole[] = [];
+  try {
+    const workingPlatoons = ["1", "2", "3", "4"].filter((p) => p !== userPlatoon);
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    for (const plt of workingPlatoons) {
+      const recentDates: { date: string; shift: "day" | "night" }[] = [];
+      for (let i = 0; i <= 10 && recentDates.length < 2; i++) {
+        const checkDate = new Date(Date.now() - i * 86400000).toISOString().split("T")[0];
+        const shiftInfo = getShiftInfo(checkDate, plt);
+        if (shiftInfo.type === "day" || shiftInfo.type === "night") {
+          recentDates.push({ date: checkDate, shift: shiftInfo.type as "day" | "night" });
+        }
+      }
+
+      for (const rd of recentDates) {
+        const dateObj = new Date(rd.date + "T00:00:00Z");
+        const cached = await prisma.staffingCache.findMany({
+          where: { date: dateObj, platoon: plt },
+          orderBy: { station: "asc" },
+        });
+        if (cached.length > 0) {
+          const stations = cached.map((c) => c.data as unknown as { station: number; headCount?: number; trucks: { truck: string; type: string; crew: { name: string; rank: string; status?: string }[] }[] });
+          const sf = calculateShortfall(stations, plt, rd.date, rd.shift);
+          recentShiftHoles.push({
+            platoon: plt,
+            shift: rd.shift,
+            date: rd.date,
+            ffHoles: sf.ffHoles,
+            actualCrew: sf.actualCrew,
+            requiredCrew: sf.requiredCrew,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[overtime] Recent shift holes error:", err);
+  }
+
+  console.log("[overtime] Recent shift holes:", recentShiftHoles.map((h) => `PLT-${h.platoon} ${h.shift} ${h.date}: ${h.ffHoles}FF (${h.actualCrew}/${h.requiredCrew})`).join(", "));
+
+  // Update prediction with recent shift holes and the NEXT shift's actual holes
   if (prediction && callInData?.positionsAhead !== null) {
     // Find the first upcoming shift with holes (day or night)
     const nextDayShift = shortfalls.find((sf) => sf.shift === "day");
@@ -344,18 +387,17 @@ export async function GET(req: Request) {
     // Use the first day shift holes as the primary number (most relevant)
     const primaryHoles = nextDayShift?.ffHoles || nextNightShift?.ffHoles || avgHolesPerShift;
 
-    if (primaryHoles > 0) {
-      prediction = predictOvertime({
-        positionsAhead: callInData!.positionsAhead!,
-        last6OffTotal: prediction.last6OffTotal,
-        todayOtwp: prediction.todayOtwp,
-        todayHoles: primaryHoles,
-        date,
-        yesterdayRatio: prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value !== "N/A"
-          ? parseFloat(prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value || "0")
-          : undefined,
-      });
-    }
+    prediction = predictOvertime({
+      positionsAhead: callInData!.positionsAhead!,
+      last6OffTotal: prediction.last6OffTotal,
+      todayOtwp: prediction.todayOtwp,
+      todayHoles: primaryHoles > 0 ? primaryHoles : null,
+      date,
+      yesterdayRatio: prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value !== "N/A"
+        ? parseFloat(prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value || "0")
+        : undefined,
+      recentShiftHoles: recentShiftHoles.length > 0 ? recentShiftHoles : undefined,
+    });
   }
 
   return NextResponse.json({
@@ -375,5 +417,6 @@ export async function GET(req: Request) {
     lastScrapedAt,
     ytdNeeded,
     ytdWorked,
+    recentShiftHoles,
   });
 }

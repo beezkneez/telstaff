@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
+
+interface RecentShiftHole {
+  platoon: string;
+  shift: string;
+  date: string;
+  ffHoles: number;
+  actualCrew: number;
+  requiredCrew: number;
+}
 
 interface OvertimeData {
   date: string;
@@ -18,6 +28,12 @@ interface OvertimeData {
     positionsAhead: number | null;
     nearbyMembers: { position: number; name: string }[];
   } | null;
+  sixOffDetails: {
+    date: string;
+    eligible: boolean;
+    dayShiftPlatoon: string | null;
+    nightShiftPlatoon: string | null;
+  }[];
   next6OffDetails: {
     date: string;
     eligible: boolean;
@@ -55,6 +71,17 @@ interface OvertimeData {
     actualCrew?: number;
     noData?: boolean;
   }[];
+  ytdNeeded: { platoon: string; total: number }[];
+  ytdWorked: { platoon: string; total: number }[];
+  recentShiftHoles: RecentShiftHole[];
+}
+
+interface OTWPResult {
+  date: string;
+  dayShiftPlatoon: string;
+  dayShiftCount: number;
+  nightShiftPlatoon: string;
+  nightShiftCount: number;
 }
 
 const PLATOON_COLORS: Record<string, string> = {
@@ -65,8 +92,12 @@ const PLATOON_COLORS: Record<string, string> = {
 };
 
 export default function OvertimePage() {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as { isAdmin?: boolean })?.isAdmin;
   const [data, setData] = useState<OvertimeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [otwpData, setOtwpData] = useState<OTWPResult[]>([]);
+  const [otwpLoading, setOtwpLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     () => new Date().toISOString().split("T")[0]
   );
@@ -75,7 +106,16 @@ export default function OvertimePage() {
     setLoading(true);
     fetch(`/api/overtime?date=${selectedDate}`)
       .then((r) => r.json())
-      .then((d) => setData(d))
+      .then((d) => {
+        setData(d);
+        // Fetch OTWP data for last 6-off display
+        setOtwpLoading(true);
+        fetch(`/api/overtime/otwp?date=${selectedDate}`)
+          .then((r) => r.json())
+          .then((otwp) => { if (otwp.results) setOtwpData(otwp.results); })
+          .catch(() => {})
+          .finally(() => setOtwpLoading(false));
+      })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [selectedDate]);
@@ -105,9 +145,7 @@ export default function OvertimePage() {
             <button
               onClick={async () => {
                 setLoading(true);
-                // Force fresh OTWP scrape
                 await fetch(`/api/overtime/otwp?date=${selectedDate}&force=true`);
-                // Reload overtime data
                 const res = await fetch(`/api/overtime?date=${selectedDate}`);
                 const d = await res.json();
                 setData(d);
@@ -117,12 +155,14 @@ export default function OvertimePage() {
             >
               Update List
             </button>
-            <Link
-              href="/dashboard/overtime/analytics"
-              className="px-3 py-2 bg-surface border border-border font-mono text-[10px] tracking-wider text-muted hover:text-ember hover:border-ember/40 uppercase transition-colors"
-            >
-              Analytics →
-            </Link>
+            {isAdmin && (
+              <Link
+                href="/dashboard/overtime/analytics"
+                className="px-3 py-2 bg-surface border border-border font-mono text-[10px] tracking-wider text-muted hover:text-ember hover:border-ember/40 uppercase transition-colors"
+              >
+                Analytics →
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -137,46 +177,104 @@ export default function OvertimePage() {
         </div>
       ) : data ? (
         <div className="space-y-4">
-          {/* Scrape info bar — always visible */}
-          {(
-            <div className="flex items-center justify-between p-3 bg-surface border border-border animate-fade-slide-up">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 ${data.dataStale ? "bg-amber" : "bg-success"}`} />
-                <span className="font-mono text-[10px] text-muted tracking-wider">
-                  {data.lastScrapedAt ? (() => {
-                    const scraped = new Date(data.lastScrapedAt);
-                    const ago = Math.round((Date.now() - scraped.getTime()) / 60000);
-                    const timeStr = scraped.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Edmonton" });
-                    return `Last scraped ${timeStr} (${ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`})`;
-                  })() : "No scrape data available"}
-                </span>
-                <span className="font-mono text-[10px] text-muted/50">
-                  // Next: 6:30a, 7a, 10a, 1p, 4:30p, 5p
-                </span>
+          {/* Scrape info bar */}
+          <div className="flex items-center justify-between p-3 bg-surface border border-border animate-fade-slide-up">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 ${data.dataStale ? "bg-amber" : "bg-success"}`} />
+              <span className="font-mono text-[10px] text-muted tracking-wider">
+                {data.lastScrapedAt ? (() => {
+                  const scraped = new Date(data.lastScrapedAt);
+                  const ago = Math.round((Date.now() - scraped.getTime()) / 60000);
+                  const timeStr = scraped.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Edmonton" });
+                  return `Last scraped ${timeStr} (${ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`})`;
+                })() : "No scrape data available"}
+              </span>
+              <span className="font-mono text-[10px] text-muted/50">
+                // Next: 6:30a, 7a, 10a, 1p, 4:30p, 5p
+              </span>
+            </div>
+            <button
+              onClick={async () => {
+                setLoading(true);
+                const todayPlatoon = data.onShift.dayShift || data.onShift.nightShift || "1";
+                await fetch("/api/stations/refresh", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ platoon: todayPlatoon, date: selectedDate }),
+                }).catch(() => {});
+                const res = await fetch(`/api/overtime?date=${selectedDate}`);
+                const d = await res.json();
+                setData(d);
+                setLoading(false);
+              }}
+              className="px-3 py-1 font-mono text-[10px] tracking-wider uppercase bg-surface-raised border border-border text-muted hover:text-foreground hover:border-ember/40 transition-all"
+            >
+              Rescrape Now
+            </button>
+          </div>
+
+          {/* Last 6-Off — OTWP Call-Ins */}
+          {data.sixOffDetails && data.sixOffDetails.length > 0 && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">Last 6-Off — OT Call-Ins</h2>
+                {otwpLoading && <span className="font-mono text-[9px] text-ember tracking-wider uppercase animate-pulse-ember">Scraping...</span>}
               </div>
-              <button
-                onClick={async () => {
-                  setLoading(true);
-                  const todayPlatoon = data.onShift.dayShift || data.onShift.nightShift || "1";
-                  await fetch("/api/stations/refresh", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ platoon: todayPlatoon, date: selectedDate }),
-                  }).catch(() => {});
-                  const res = await fetch(`/api/overtime?date=${selectedDate}`);
-                  const d = await res.json();
-                  setData(d);
-                  setLoading(false);
-                }}
-                className="px-3 py-1 font-mono text-[10px] tracking-wider uppercase bg-surface-raised border border-border text-muted hover:text-foreground hover:border-ember/40 transition-all"
-              >
-                Rescrape Now
-              </button>
+              <div className="space-y-1">
+                {data.sixOffDetails.map((day, i) => {
+                  const dayLabel = new Date(day.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                  const otwp = otwpData.find((o) => o.date === day.date);
+                  return (
+                    <div key={day.date} className={`flex items-center justify-between px-3 py-2.5 ${day.eligible ? "bg-surface-raised/50" : "bg-surface-raised/20 opacity-60"}`}>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] text-muted w-4">{i + 1}</span>
+                        <span className="font-mono text-sm text-foreground">{dayLabel}</span>
+                        {!day.eligible && <span className="font-mono text-[10px] text-muted tracking-wider">NOT ELIGIBLE</span>}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-amber tracking-wider">DAY</span>
+                          <span className="font-mono text-[10px] px-1.5 py-0.5" style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>PLT-{day.dayShiftPlatoon}</span>
+                          {otwp ? (
+                            <span className={`font-mono text-[11px] font-bold ml-1 ${otwp.dayShiftCount > 0 ? "text-ember" : "text-muted"}`}>
+                              {otwp.dayShiftCount > 0 ? otwp.dayShiftCount : "0"}
+                            </span>
+                          ) : otwpLoading ? <span className="font-mono text-[9px] text-muted ml-1">...</span> : <span className="font-mono text-[10px] text-muted/40 ml-1">—</span>}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-platoon-3 tracking-wider">NIGHT</span>
+                          <span className="font-mono text-[10px] px-1.5 py-0.5" style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>PLT-{day.nightShiftPlatoon}</span>
+                          {otwp ? (
+                            <span className={`font-mono text-[11px] font-bold ml-1 ${otwp.nightShiftCount > 0 ? "text-ember" : "text-muted"}`}>
+                              {otwp.nightShiftCount > 0 ? otwp.nightShiftCount : "0"}
+                            </span>
+                          ) : otwpLoading ? <span className="font-mono text-[9px] text-muted ml-1">...</span> : <span className="font-mono text-[10px] text-muted/40 ml-1">—</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {otwpData.length > 0 && (
+                <div className="mt-3 p-3 bg-surface-raised border border-border-subtle">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Total OT Call-Ins</span>
+                    <div className="flex gap-4">
+                      <span className="font-mono text-xs"><span className="text-amber">Day:</span> <span className="text-ember font-bold">{otwpData.reduce((s, o) => s + o.dayShiftCount, 0)}</span></span>
+                      <span className="font-mono text-xs"><span className="text-platoon-3">Night:</span> <span className="text-ember font-bold">{otwpData.reduce((s, o) => s + o.nightShiftCount, 0)}</span></span>
+                      <span className="font-mono text-xs text-foreground font-bold">Total: {otwpData.reduce((s, o) => s + o.dayShiftCount + o.nightShiftCount, 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!otwpLoading && otwpData.length === 0 && (
+                <p className="mt-3 font-mono text-[10px] text-muted/50 tracking-wider">No OTWP data scraped yet — tap Update List to fetch.</p>
+              )}
             </div>
           )}
 
           {/* Your Status */}
-          <div className="bg-surface border border-border p-5 animate-fade-slide-up">
+          <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-75">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">Your Status</h2>
               <span className="font-mono text-[10px] tracking-wider uppercase px-2 py-1"
@@ -202,9 +300,48 @@ export default function OvertimePage() {
             </div>
           </div>
 
+          {/* Recent Shift Holes — last 2 shifts per working platoon */}
+          {data.recentShiftHoles && data.recentShiftHoles.length > 0 && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-100">
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-1">Recent Shift Holes</h2>
+              <p className="font-mono text-[10px] text-muted tracking-wider mb-4">Last 2 shifts per working platoon — weighted 70% in prediction</p>
+              <div className="space-y-1">
+                {data.recentShiftHoles.map((h, i) => {
+                  const dayLabel = new Date(h.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                  return (
+                    <div key={i} className="flex items-center justify-between px-3 py-2.5 bg-surface-raised/50">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] px-1.5 py-0.5"
+                          style={{ backgroundColor: `color-mix(in srgb, var(--${PLATOON_COLORS[h.platoon]}) 15%, transparent)`, color: `var(--${PLATOON_COLORS[h.platoon]})` }}>
+                          PLT-{h.platoon}
+                        </span>
+                        <span className={`font-mono text-[10px] tracking-wider ${h.shift === "day" ? "text-amber" : "text-platoon-3"} uppercase`}>{h.shift}</span>
+                        <span className="font-mono text-sm text-foreground">{dayLabel}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`font-mono text-sm font-bold ${h.ffHoles > 0 ? "text-ember" : h.ffHoles < 0 ? "text-success" : "text-muted"}`}>
+                          {h.ffHoles > 0 ? `-${h.ffHoles}` : h.ffHoles < 0 ? `+${Math.abs(h.ffHoles)}` : "="} holes
+                        </span>
+                        <span className="font-mono text-[10px] text-muted">{h.actualCrew}/{h.requiredCrew}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 p-3 bg-surface-raised border border-border-subtle">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Avg Holes/Shift</span>
+                  <span className="font-mono text-sm text-ember font-bold">
+                    {(data.recentShiftHoles.reduce((s, h) => s + h.ffHoles, 0) / data.recentShiftHoles.length).toFixed(1)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Prediction */}
           {data.prediction && data.eligible && (
-            <div className={`border p-5 animate-fade-slide-up delay-75 ${
+            <div className={`border p-5 animate-fade-slide-up delay-150 ${
               data.prediction.probability === "high" ? "bg-ember/5 border-ember/30"
                 : data.prediction.probability === "medium" ? "bg-amber/5 border-amber/30"
                 : "bg-surface border-border"
@@ -300,7 +437,7 @@ export default function OvertimePage() {
 
           {/* Next 6-Off Preview */}
           {data.next6OffDetails && data.next6OffDetails.length > 0 && (
-            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-150">
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-200">
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">Next 6-Off</h2>
               <div className="space-y-1">
                 {data.next6OffDetails.map((day, i) => {
@@ -375,7 +512,7 @@ export default function OvertimePage() {
 
           {/* Call-In List */}
           {data.callInData && (
-            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-200">
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-250">
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">Call-In List — PLT-{data.userPlatoon}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
                 <div>
@@ -424,21 +561,56 @@ export default function OvertimePage() {
             </div>
           )}
 
-          {/* Link to analytics */}
-          <Link
-            href="/dashboard/overtime/analytics"
-            className="block p-4 bg-surface border border-border hover:border-ember/40 transition-colors animate-fade-slide-up delay-300"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono text-sm text-foreground">OT Analytics & Deep Dive</p>
-                <p className="font-mono text-[10px] text-muted mt-1">
-                  OTWP history, YTD tallies, schedule holes breakdown, prediction factors
-                </p>
+          {/* YTD OT Tally */}
+          {data.ytdNeeded && data.ytdNeeded.some((t) => t.total > 0) && (
+            <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-300">
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">YTD OT Tally — {new Date().getFullYear()}</h2>
+              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-2">OT Call-Ins Needed (by on-shift platoon)</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                {data.ytdNeeded.map((t) => (
+                  <div key={t.platoon} className="p-3 border border-border-subtle">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2.5 h-2.5" style={{ backgroundColor: `var(--${PLATOON_COLORS[t.platoon]})` }} />
+                      <span className="font-mono text-[10px] tracking-wider uppercase">PLT-{t.platoon}</span>
+                    </div>
+                    <p className="font-display text-2xl font-bold" style={{ color: `var(--${PLATOON_COLORS[t.platoon]})` }}>{t.total}</p>
+                    <p className="font-mono text-[9px] text-muted mt-1">needed on their shifts</p>
+                  </div>
+                ))}
               </div>
-              <span className="font-mono text-ember text-lg">→</span>
+              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-2">OT Shifts Worked (by off-duty platoon)</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {data.ytdWorked.map((t) => (
+                  <div key={t.platoon} className="p-3 border border-border-subtle">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2.5 h-2.5" style={{ backgroundColor: `var(--${PLATOON_COLORS[t.platoon]})` }} />
+                      <span className="font-mono text-[10px] tracking-wider uppercase">PLT-{t.platoon}</span>
+                    </div>
+                    <p className="font-display text-2xl font-bold text-ember">{t.total}</p>
+                    <p className="font-mono text-[9px] text-muted mt-1">OT shifts received</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </Link>
+          )}
+
+          {/* Admin-only analytics link */}
+          {isAdmin && (
+            <Link
+              href="/dashboard/overtime/analytics"
+              className="block p-4 bg-surface border border-border hover:border-ember/40 transition-colors animate-fade-slide-up delay-400"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-mono text-sm text-foreground">OT Analytics & Deep Dive</p>
+                  <p className="font-mono text-[10px] text-muted mt-1">
+                    Prediction factors, schedule holes breakdown, rotation details
+                  </p>
+                </div>
+                <span className="font-mono text-ember text-lg">→</span>
+              </div>
+            </Link>
+          )}
         </div>
       ) : (
         <div className="text-center py-20">
