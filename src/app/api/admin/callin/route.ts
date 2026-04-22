@@ -45,6 +45,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ members, state });
   }
 
+  if (action === "list-all") {
+    const members = await prisma.callInMember.findMany({
+      where: { active: true },
+      orderBy: [{ platoon: "asc" }, { position: "asc" }],
+      select: { id: true, platoon: true, position: true, lastName: true, firstName: true, payrollNumber: true },
+    });
+    const grouped: Record<string, typeof members> = { "1": [], "2": [], "3": [], "4": [] };
+    for (const m of members) {
+      if (grouped[m.platoon]) grouped[m.platoon].push(m);
+    }
+    return NextResponse.json(grouped);
+  }
+
   if (action === "history") {
     const history = await prisma.callInHistory.findMany({
       orderBy: { date: "desc" },
@@ -146,6 +159,22 @@ export async function POST(req: Request) {
     const { addNewHire } = await import("@/lib/callin-db");
     await addNewHire(body.platoon, body.lastName, body.firstName, body.payrollNumber);
     return NextResponse.json({ success: true });
+  }
+
+  if (body.action === "update-member") {
+    const { id, lastName, firstName, payrollNumber } = body as {
+      id: string;
+      lastName?: string;
+      firstName?: string | null;
+      payrollNumber?: string | null;
+    };
+    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+    const data: { lastName?: string; firstName?: string | null; payrollNumber?: string | null } = {};
+    if (typeof lastName === "string") data.lastName = lastName.trim().toUpperCase();
+    if (firstName !== undefined) data.firstName = firstName === null || firstName === "" ? null : firstName.trim();
+    if (payrollNumber !== undefined) data.payrollNumber = payrollNumber === null || payrollNumber === "" ? null : payrollNumber.trim();
+    const updated = await prisma.callInMember.update({ where: { id }, data });
+    return NextResponse.json({ success: true, member: updated });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
