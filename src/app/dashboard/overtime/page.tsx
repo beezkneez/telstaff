@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 
@@ -101,6 +101,8 @@ export default function OvertimePage() {
   const [selectedDate, setSelectedDate] = useState(
     () => new Date().toISOString().split("T")[0]
   );
+  const userRowRef = useRef<HTMLDivElement | null>(null);
+  const listScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -119,6 +121,13 @@ export default function OvertimePage() {
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (!data?.callInData?.userPosition || !userRowRef.current || !listScrollRef.current) return;
+    const row = userRowRef.current;
+    const container = listScrollRef.current;
+    container.scrollTop = row.offsetTop - container.clientHeight / 2 + row.clientHeight / 2;
+  }, [data]);
 
   const displayDate = new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric",
@@ -547,16 +556,30 @@ export default function OvertimePage() {
               <div className="border border-border-subtle">
                 <div className="px-3 py-2 bg-surface-raised border-b border-border-subtle flex items-center justify-between">
                   <span className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase">Call-In Order</span>
-                  <span className="font-mono text-[12px] tracking-[0.2em] text-ember uppercase">{data.callInData.currentUp} is first up</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[12px] tracking-[0.2em] text-ember uppercase">{data.callInData.currentUp} is first up</span>
+                    {data.callInData.userPosition && (
+                      <button
+                        onClick={() => userRowRef.current?.scrollIntoView({ block: "center", behavior: "smooth" })}
+                        className="font-mono text-[11px] tracking-wider uppercase px-2 py-0.5 border border-ember/30 text-ember hover:bg-ember/10 transition-colors"
+                      >
+                        Jump to you
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="divide-y divide-border-subtle">
+                <div ref={listScrollRef} className="divide-y divide-border-subtle max-h-[480px] overflow-y-auto">
                   {data.callInData.nearbyMembers.map((m) => {
                     const isUser = data.callInData?.userPosition === m.position;
                     const isCurrentUp = m.name.toUpperCase() === data.callInData?.currentUp.toUpperCase();
                     return (
-                      <div key={m.position} className={`flex items-center justify-between px-3 py-2 ${isUser ? "bg-ember/10 border-l-2 border-l-ember" : isCurrentUp ? "bg-success/10 border-l-2 border-l-success" : ""}`}>
+                      <div
+                        key={m.position}
+                        ref={isUser ? userRowRef : undefined}
+                        className={`flex items-center justify-between px-3 py-2 ${isUser ? "bg-ember/10 border-l-2 border-l-ember" : isCurrentUp ? "bg-success/10 border-l-2 border-l-success" : ""}`}
+                      >
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-[12px] text-muted w-6">#{m.order ?? m.position}</span>
+                          <span className="font-mono text-[12px] text-muted w-10">#{m.order ?? m.position}</span>
                           <span className={`font-mono text-sm ${isUser ? "text-ember font-bold" : isCurrentUp ? "text-success font-bold" : "text-foreground"}`}>{m.name}</span>
                         </div>
                         {isUser && <span className="font-mono text-[12px] text-ember tracking-wider uppercase">You</span>}

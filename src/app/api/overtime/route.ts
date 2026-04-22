@@ -77,11 +77,7 @@ export async function GET(req: Request) {
         userPosition: position,
         userOrder: positionsAhead !== null ? positionsAhead + 1 : null,
         positionsAhead,
-        nearbyMembers: position !== null
-          ? withOrder
-              .filter((m) => Math.abs(m.order - (positionsAhead! + 1)) <= 5)
-              .sort((a, b) => a.order - b.order)
-          : withOrder.sort((a, b) => a.order - b.order).slice(0, 15),
+        nearbyMembers: withOrder.sort((a, b) => a.order - b.order),
       };
     } else {
       // Fallback to Google Sheet
