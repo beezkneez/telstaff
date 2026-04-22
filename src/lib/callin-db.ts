@@ -124,7 +124,7 @@ export async function updateFromOTWP(
   otwpNames: string[], // names from OTWP scrape (format: "LastName, FirstName ...")
   date: string,
   shift: string
-): Promise<{ namesDialed: number; ratio: number; newCurrentUp: number } | null> {
+): Promise<{ namesDialed: number; ratio: number; newCurrentUp: number | null } | null> {
   const members = await prisma.callInMember.findMany({
     where: { platoon, active: true },
     orderBy: { position: "asc" },
@@ -181,59 +181,60 @@ export async function updateFromOTWP(
 
   if (matchedPositions.length === 0) return null;
 
-  // Find the furthest person from currentUpPos (accounting for wrap-around)
-  let furthestPos = currentUpPos;
-  let furthestDistance = 0;
+  // Pick the furthest matched position that's genuinely forward of currentUpPos.
+  // Matches < currentUpPos are treated as already-called on a previous round and ignored.
+  // Narrow wrap exception: currentUpPos sitting in the last 5% of the list AND every
+  // match landing in the first 5% — the list actually wrapped, use those matches.
+  const total = members.length;
+  const wrapEnd = Math.ceil(total * 0.95);
+  const wrapStart = Math.floor(total * 0.05);
+  const forwardMatches = matchedPositions.filter((p) => p >= currentUpPos);
+  const isWrap =
+    forwardMatches.length === 0 &&
+    currentUpPos >= wrapEnd &&
+    matchedPositions.every((p) => p <= wrapStart);
+  const usableMatches = isWrap ? matchedPositions : forwardMatches;
 
-  for (const pos of matchedPositions) {
-    const distance = pos >= currentUpPos
-      ? pos - currentUpPos
-      : members.length - currentUpPos + pos;
-    if (distance > furthestDistance) {
-      furthestDistance = distance;
-      furthestPos = pos;
-    }
-  }
+  const furthestPos = usableMatches.length > 0 ? Math.max(...usableMatches) : null;
+  const lastMember = furthestPos !== null ? members.find((m) => m.position === furthestPos) ?? null : null;
 
-  // Next up = one position after the furthest person
-  const furthestIdx = members.findIndex((m) => m.position === furthestPos);
-  const nextUpIdx = (furthestIdx + 1) % members.length;
-  const newCurrentUp = members[nextUpIdx].position;
-
-  // Calculate names dialed (distance from start to furthest + 1)
-  const namesDialed = furthestDistance + 1;
+  // namesDialed reflects how far down the list this shift's calls reached (for history/ratio).
+  // When nothing forward matched, fall back to raw match count so history still has a value.
+  const namesDialed = furthestPos !== null
+    ? (isWrap ? total - currentUpPos + furthestPos + 1 : furthestPos - currentUpPos + 1)
+    : matchedPositions.length;
   const ratio = otwpNames.length > 0 ? namesDialed / otwpNames.length : 0;
 
-  // Only update the list position for recent data (today/yesterday)
-  // And only move FORWARD, never backward
-  const lastMember = members.find((m) => m.position === furthestPos);
+  let newCurrentUp: number | null = null;
+  if (furthestPos !== null) {
+    const furthestIdx = members.findIndex((m) => m.position === furthestPos);
+    const nextUpIdx = (furthestIdx + 1) % members.length;
+    newCurrentUp = members[nextUpIdx].position;
+  }
 
-  if (isRecent) {
-    // Check if new position is ahead of current (forward movement only)
-    const currentIdx = members.findIndex((m) => m.position === currentUpPos);
-    const newIdx = members.findIndex((m) => m.position === newCurrentUp);
-    const isForward = newIdx > currentIdx || (newIdx < currentIdx && furthestDistance > members.length / 2);
-
-    if (isForward || currentUpPos === 1) {
-      await prisma.callInState.upsert({
-        where: { platoon },
-        update: {
-          currentUpPos: newCurrentUp,
-          lastOtwpName: lastMember?.lastName || null,
-          updatedAt: new Date(),
-        },
-        create: {
-          platoon,
-          currentUpPos: newCurrentUp,
-          lastOtwpName: lastMember?.lastName || null,
-        },
-      });
-      console.log(`[callin-db] List position UPDATED: ${currentUpPos} → ${newCurrentUp}`);
-    } else {
-      console.log(`[callin-db] Skipping backward move: ${currentUpPos} → ${newCurrentUp} (would go backward)`);
-    }
-  } else {
+  if (!isRecent) {
     console.log(`[callin-db] Historical date ${date} — saving history only, not moving list`);
+  } else if (newCurrentUp === null) {
+    console.log(
+      `[callin-db] No forward matches from pos ${currentUpPos} — matches: [${matchedPositions.join(", ")}]. Not moving list.`
+    );
+  } else {
+    await prisma.callInState.upsert({
+      where: { platoon },
+      update: {
+        currentUpPos: newCurrentUp,
+        lastOtwpName: lastMember?.lastName || null,
+        updatedAt: new Date(),
+      },
+      create: {
+        platoon,
+        currentUpPos: newCurrentUp,
+        lastOtwpName: lastMember?.lastName || null,
+      },
+    });
+    console.log(
+      `[callin-db] List position UPDATED: ${currentUpPos} → ${newCurrentUp}${isWrap ? " (wrap)" : ""}`
+    );
   }
 
   // Save history
