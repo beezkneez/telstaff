@@ -63,21 +63,25 @@ export async function GET(req: Request) {
 
       const currentUpMember = members.find((m) => m.position === currentUpPos);
 
+      // `order` is call-in order from next-up: 1 = next up, 2 = one behind, etc.
+      // Keep raw `position` for identifying the user's row on the client.
+      const withOrder = members.map((m) => ({
+        position: m.position,
+        order: getDbPositionsAhead(currentUpPos, m.position, members.length) + 1,
+        name: `${m.lastName}${m.firstName ? `, ${m.firstName}` : ""}`,
+      }));
+
       callInData = {
         currentUp: currentUpMember ? `${currentUpMember.lastName}${currentUpMember.firstName ? `, ${currentUpMember.firstName}` : ""}` : "Unknown",
         totalMembers: members.length,
         userPosition: position,
+        userOrder: positionsAhead !== null ? positionsAhead + 1 : null,
         positionsAhead,
         nearbyMembers: position !== null
-          ? members
-              .filter((m) => {
-                const dist = getDbPositionsAhead(currentUpPos, m.position, members.length);
-                const userDist = positionsAhead ?? 0;
-                return Math.abs(dist - userDist) <= 5;
-              })
-              .sort((a, b) => a.position - b.position)
-              .map((m) => ({ position: m.position, name: `${m.lastName}${m.firstName ? `, ${m.firstName}` : ""}` }))
-          : members.slice(0, 15).map((m) => ({ position: m.position, name: `${m.lastName}${m.firstName ? `, ${m.firstName}` : ""}` })),
+          ? withOrder
+              .filter((m) => Math.abs(m.order - (positionsAhead! + 1)) <= 5)
+              .sort((a, b) => a.order - b.order)
+          : withOrder.sort((a, b) => a.order - b.order).slice(0, 15),
       };
     } else {
       // Fallback to Google Sheet

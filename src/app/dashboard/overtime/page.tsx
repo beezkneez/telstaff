@@ -24,8 +24,9 @@ interface OvertimeData {
     currentUp: string;
     totalMembers: number;
     userPosition: number | null;
+    userOrder: number | null;
     positionsAhead: number | null;
-    nearbyMembers: { position: number; name: string }[];
+    nearbyMembers: { position: number; order?: number; name: string }[];
   } | null;
   sixOffDetails: {
     date: string;
@@ -528,7 +529,7 @@ export default function OvertimePage() {
                 </div>
                 <div>
                   <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Your Position</p>
-                  <p className="font-mono text-sm text-foreground">{data.callInData.userPosition ? `#${data.callInData.userPosition}` : "Not found"}</p>
+                  <p className="font-mono text-sm text-foreground">{data.callInData.userOrder ? `#${data.callInData.userOrder}` : "Not found"}</p>
                 </div>
                 <div>
                   <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Ahead of You</p>
@@ -555,7 +556,7 @@ export default function OvertimePage() {
                     return (
                       <div key={m.position} className={`flex items-center justify-between px-3 py-2 ${isUser ? "bg-ember/10 border-l-2 border-l-ember" : isCurrentUp ? "bg-success/10 border-l-2 border-l-success" : ""}`}>
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-[12px] text-muted w-6">{m.position}</span>
+                          <span className="font-mono text-[12px] text-muted w-6">#{m.order ?? m.position}</span>
                           <span className={`font-mono text-sm ${isUser ? "text-ember font-bold" : isCurrentUp ? "text-success font-bold" : "text-foreground"}`}>{m.name}</span>
                         </div>
                         {isUser && <span className="font-mono text-[12px] text-ember tracking-wider uppercase">You</span>}
