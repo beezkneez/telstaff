@@ -3,14 +3,14 @@
 
 :root {
   --background: #060809;
-  --foreground: #d4d8e0;
+  --foreground: #e6eaf2;
   --surface: #0c1015;
   --surface-raised: #121820;
   --surface-overlay: #1a222e;
-  --border: #1e2a38;
-  --border-subtle: #141c26;
+  --border: #2a3a4d;
+  --border-subtle: #1c2632;
   --border-hot: #ff4a1c33;
-  --muted: #5a6a7e;
+  --muted: #94a3b8;
   --ember: #ff4a1c;
   --ember-glow: #ff6b3d;
   --ember-dim: #b83214;
@@ -53,7 +53,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.6;
 }
 

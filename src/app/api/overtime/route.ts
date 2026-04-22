@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off, getNext6Off } from "@/lib/rotation";
+import { getShiftInfo, getOnShiftPlatoons, canBeCalledIn, getLast6Off, getNext6Off, getRecentCompletedShifts } from "@/lib/rotation";
 import { getCallInList, findMemberOnList, getPositionsAhead as getDbPositionsAhead } from "@/lib/callin-db";
 import { getRecentHistory } from "@/lib/callin-db";
-import { predictOvertime, isNearStatHoliday, type RecentShiftHole } from "@/lib/prediction";
+import { predictOvertime, isNearStatHoliday, type RecentShiftCallIn } from "@/lib/prediction";
 import { calculateShortfall, type StaffingShortfall } from "@/lib/staffing-calc";
 
 export async function GET(req: Request) {
@@ -329,48 +329,44 @@ export async function GET(req: Request) {
 
   console.log("[overtime] Shortfalls:", shortfalls.map((sf) => `${sf.date} ${sf.shift} PLT-${sf.platoon}: ${sf.ffHoles}FF ${sf.captainHoles}Capt`).join(", "));
 
-  // Compute recent shift holes — last 2 completed shifts for each working platoon
-  // These are the most current, real data and get 70% weight in the prediction
-  const recentShiftHoles: RecentShiftHole[] = [];
+  // Each working platoon's last 2 completed shifts — show how many call-ins (OTWP) worked.
+  // Sourced from OTWPCache (populated by cron + on-demand scrape). Weighted 70% in prediction.
+  const recentShiftCallIns: RecentShiftCallIn[] = [];
   try {
     const workingPlatoons = ["1", "2", "3", "4"].filter((p) => p !== userPlatoon);
-    const todayStr = new Date().toISOString().split("T")[0];
+    // "Today" in Edmonton local time, so a UTC rollover near midnight can't surface a future date.
+    const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Edmonton" });
 
     for (const plt of workingPlatoons) {
-      const recentDates: { date: string; shift: "day" | "night" }[] = [];
-      for (let i = 0; i <= 10 && recentDates.length < 2; i++) {
-        const checkDate = new Date(Date.now() - i * 86400000).toISOString().split("T")[0];
-        const shiftInfo = getShiftInfo(checkDate, plt);
-        if (shiftInfo.type === "day" || shiftInfo.type === "night") {
-          recentDates.push({ date: checkDate, shift: shiftInfo.type as "day" | "night" });
-        }
-      }
-
+      const recentDates = getRecentCompletedShifts(todayStr, plt, 2);
       for (const rd of recentDates) {
         const dateObj = new Date(rd.date + "T00:00:00Z");
-        const cached = await prisma.staffingCache.findMany({
-          where: { date: dateObj, platoon: plt },
-          orderBy: { station: "asc" },
+        const cached = await prisma.oTWPCache.findUnique({
+          where: { date_platoon_shift: { date: dateObj, platoon: plt, shift: rd.shift } },
         });
-        if (cached.length > 0) {
-          const stations = cached.map((c) => c.data as unknown as { station: number; headCount?: number; trucks: { truck: string; type: string; crew: { name: string; rank: string; status?: string }[] }[] });
-          const sf = calculateShortfall(stations, plt, rd.date, rd.shift);
-          recentShiftHoles.push({
+        if (cached) {
+          recentShiftCallIns.push({
             platoon: plt,
             shift: rd.shift,
             date: rd.date,
-            ffHoles: sf.ffHoles,
-            actualCrew: sf.actualCrew,
-            requiredCrew: sf.requiredCrew,
+            otwpCount: cached.count,
+          });
+        } else {
+          recentShiftCallIns.push({
+            platoon: plt,
+            shift: rd.shift,
+            date: rd.date,
+            otwpCount: 0,
+            noData: true,
           });
         }
       }
     }
   } catch (err) {
-    console.error("[overtime] Recent shift holes error:", err);
+    console.error("[overtime] Recent shift call-ins error:", err);
   }
 
-  console.log("[overtime] Recent shift holes:", recentShiftHoles.map((h) => `PLT-${h.platoon} ${h.shift} ${h.date}: ${h.ffHoles}FF (${h.actualCrew}/${h.requiredCrew})`).join(", "));
+  console.log("[overtime] Recent shift call-ins:", recentShiftCallIns.map((h) => `PLT-${h.platoon} ${h.shift} ${h.date}: ${h.noData ? "no-data" : h.otwpCount + " OTWP"}`).join(", "));
 
   // Update prediction with recent shift holes and the NEXT shift's actual holes
   if (prediction && callInData?.positionsAhead !== null) {
@@ -396,7 +392,7 @@ export async function GET(req: Request) {
       yesterdayRatio: prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value !== "N/A"
         ? parseFloat(prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value || "0")
         : undefined,
-      recentShiftHoles: recentShiftHoles.length > 0 ? recentShiftHoles : undefined,
+      recentShiftCallIns: recentShiftCallIns.length > 0 ? recentShiftCallIns : undefined,
     });
   }
 
@@ -417,6 +413,6 @@ export async function GET(req: Request) {
     lastScrapedAt,
     ytdNeeded,
     ytdWorked,
-    recentShiftHoles,
+    recentShiftCallIns,
   });
 }

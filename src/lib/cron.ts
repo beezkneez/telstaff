@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { prisma } from "./prisma";
 import { decrypt } from "./encryption";
-import { getOnShiftPlatoons, getLast6Off } from "./rotation";
+import { getOnShiftPlatoons, getLast6Off, getRecentCompletedShifts } from "./rotation";
 import type { StationStaffing } from "./types";
 
 let initialized = false;
@@ -154,9 +154,9 @@ export async function runNightlyScrape(): Promise<void> {
 
   const now = new Date();
 
-  // Build list of dates: 6 days back through 16 days ahead (full rotation cycle)
+  // Build list of dates: 10 days back through 16 days ahead (full rotation cycle)
   const dates: string[] = [];
-  for (let i = -6; i <= 16; i++) {
+  for (let i = -10; i <= 16; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + i);
     dates.push(d.toISOString().split("T")[0]);
@@ -193,6 +193,17 @@ export async function runNightlyScrape(): Promise<void> {
       if (otwpDatesScraped.has(d)) continue;
       otwpDatesScraped.add(d);
       await scrapeAndCacheOTWP(creds.username, creds.password, d, "", "both");
+    }
+  }
+
+  // Scrape each platoon's last 2 completed shifts so the recent-call-ins panel always has data,
+  // even for dates outside any user's 6-off window.
+  for (const platoon of ["1", "2", "3", "4"]) {
+    const recent = getRecentCompletedShifts(today, platoon, 2);
+    for (const r of recent) {
+      if (otwpDatesScraped.has(r.date)) continue;
+      otwpDatesScraped.add(r.date);
+      await scrapeAndCacheOTWP(creds.username, creds.password, r.date, "", "both");
     }
   }
 

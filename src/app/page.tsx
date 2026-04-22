@@ -92,7 +92,7 @@ export default function Home() {
               <p className={`font-display text-3xl font-bold tracking-wider ${stat.color}`}>
                 {stat.value}
               </p>
-              <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted mt-1">
+              <p className="font-mono text-[12px] tracking-[0.25em] uppercase text-muted mt-1">
                 {stat.label}
               </p>
             </div>
@@ -101,7 +101,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 py-4 text-center font-mono text-[10px] text-muted/50 tracking-[0.2em] uppercase border-t border-border-subtle">
+      <footer className="relative z-10 py-4 text-center font-mono text-[12px] text-muted/50 tracking-[0.2em] uppercase border-t border-border-subtle">
         BetterStaff // Not affiliated with UKG/Kronos
       </footer>
     </div>

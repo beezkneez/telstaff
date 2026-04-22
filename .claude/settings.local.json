@@ -1,7 +1,35 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(ls src/generated/prisma/index*)",
+      "Bash(npm search:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(openssl rand:*)",
+      "WebFetch(domain:edmontonfirerescue-tsc.prd.mykronos.com)",
+      "WebFetch(domain:www.edmontonfirefighters.com)",
+      "WebFetch(domain:docs.google.com)",
+      "Bash(/c/Users/judbe/OneDrive/Desktop/telstaff/public/icon.svg:*)",
+      "Bash(not get hit every shift\":*)",
+      "Bash(holidays barely anyone books off so OT demand disappears\":*)",
+      "Bash(reduces demand\":*)",
+      "Bash(expect significantly reduced overtime demand\":*)",
+      "Bash(nslookup:*)",
+      "Bash(curl -sI https://betterstaff.app)",
+      "Bash(is around 1 in 5 acceptance\":*)",
+      "Bash(people accept, they 'll just barely reach you at position 55.\":*)",
+      "Bash(node -e ':*)",
+      "Bash(npm ls:*)",
+      "Bash(find . -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) ! -path \"./node_modules/*\" -exec grep -l \"platoon.*head\\\\|staffing.*by.*platoon\\\\|count.*platoon\" {} \\\\;)",
+      "Bash(find src *)",
+      "Bash(node scripts/list-callin.js)",
+      "Read(//tmp/**)"
     ]
   }
 }

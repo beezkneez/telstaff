@@ -64,9 +64,9 @@ function UserCard({ user, onUpdate, onDelete, onMessage }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm text-foreground">{user.profile?.name || user.email}</span>
-            {user.isAdmin && <span className="font-mono text-[9px] px-1.5 py-0.5 bg-ember/20 text-ember border border-ember/30 tracking-wider">ADMIN</span>}
+            {user.isAdmin && <span className="font-mono text-[11px] px-1.5 py-0.5 bg-ember/20 text-ember border border-ember/30 tracking-wider">ADMIN</span>}
           </div>
-          <div className="font-mono text-[10px] text-muted flex flex-wrap gap-3 mt-1">
+          <div className="font-mono text-[12px] text-muted flex flex-wrap gap-3 mt-1">
             <span>{user.email}</span>
             {user.profile && (
               <>
@@ -81,18 +81,18 @@ function UserCard({ user, onUpdate, onDelete, onMessage }: {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="px-2 py-1 font-mono text-[9px] tracking-wider border border-border text-muted hover:text-foreground hover:border-ember/40 transition-all"
+            className="px-2 py-1 font-mono text-[11px] tracking-wider border border-border text-muted hover:text-foreground hover:border-ember/40 transition-all"
           >
             {expanded ? "CLOSE" : "PROFILE"}
           </button>
           <button
             onClick={() => onUpdate(user.id, { useSystemCreds: !user.useSystemCreds })}
-            className={`px-2 py-1 font-mono text-[9px] tracking-wider border transition-all ${user.useSystemCreds ? "bg-success/10 text-success border-success/30" : "bg-surface-overlay text-muted border-border"}`}
+            className={`px-2 py-1 font-mono text-[11px] tracking-wider border transition-all ${user.useSystemCreds ? "bg-success/10 text-success border-success/30" : "bg-surface-overlay text-muted border-border"}`}
           >
             {user.useSystemCreds ? "SYS CREDS" : "OWN CREDS"}
           </button>
           {!user.isAdmin && (
-            <button onClick={() => onDelete(user.id)} className="px-2 py-1 font-mono text-[9px] tracking-wider text-alert-red border border-alert-red/30 hover:bg-alert-red/10 transition-all">
+            <button onClick={() => onDelete(user.id)} className="px-2 py-1 font-mono text-[11px] tracking-wider text-alert-red border border-alert-red/30 hover:bg-alert-red/10 transition-all">
               DELETE
             </button>
           )}
@@ -103,38 +103,38 @@ function UserCard({ user, onUpdate, onDelete, onMessage }: {
         <div className="mt-3 p-3 border border-border-subtle bg-surface-raised/30 animate-fade-in">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
             <div>
-              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Name</label>
+              <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-1">Name</label>
               <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground" />
             </div>
             <div>
-              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Email</label>
+              <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-1">Email</label>
               <input value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground" />
             </div>
             <div>
-              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Payroll #</label>
+              <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-1">Payroll #</label>
               <input value={edit.payrollNumber} onChange={(e) => setEdit({ ...edit, payrollNumber: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground" />
             </div>
             <div>
-              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Platoon</label>
+              <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-1">Platoon</label>
               <select value={edit.platoon} onChange={(e) => setEdit({ ...edit, platoon: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground">
                 {["1", "2", "3", "4"].map((p) => <option key={p} value={p}>Platoon {p}</option>)}
               </select>
             </div>
             <div>
-              <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Home Station</label>
+              <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-1">Home Station</label>
               <select value={edit.homeStation} onChange={(e) => setEdit({ ...edit, homeStation: e.target.value })} className="w-full px-2 py-1.5 bg-background border border-border font-mono text-xs text-foreground">
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((s) => <option key={s} value={s}>Station {s}</option>)}
               </select>
             </div>
             <div className="flex items-end">
-              <button onClick={saveProfile} className="px-4 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[10px] tracking-wider uppercase transition-all">
+              <button onClick={saveProfile} className="px-4 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[12px] tracking-wider uppercase transition-all">
                 Save
               </button>
             </div>
           </div>
           {/* Link to DB record */}
           <div className="mt-3 pt-3 border-t border-border-subtle">
-            <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-1">Link to Database Record</label>
+            <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-1">Link to Database Record</label>
             <div className="relative">
               <input
                 type="text"
@@ -190,7 +190,7 @@ function UserCard({ user, onUpdate, onDelete, onMessage }: {
             </div>
           </div>
 
-          <div className="font-mono text-[9px] text-muted mt-2">
+          <div className="font-mono text-[11px] text-muted mt-2">
             ID: {user.id} · Created: {new Date(user.createdAt).toLocaleDateString()}
           </div>
         </div>
@@ -418,7 +418,7 @@ export default function AdminPage() {
         <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-[0.1em]">
           ADMIN<span className="text-ember">//</span>PANEL
         </h1>
-        <p className="font-mono text-[11px] tracking-[0.15em] text-muted mt-1 uppercase">
+        <p className="font-mono text-[13px] tracking-[0.15em] text-muted mt-1 uppercase">
           Manage users, scraping, and cache
         </p>
       </div>
@@ -441,13 +441,13 @@ export default function AdminPage() {
                 <button
                   onClick={triggerScrape}
                   disabled={scraping}
-                  className="px-3 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[10px] tracking-wider uppercase transition-all disabled:opacity-50"
+                  className="px-3 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[12px] tracking-wider uppercase transition-all disabled:opacity-50"
                 >
                   {scraping ? `${scrapeProgress}%` : "Run Now"}
                 </button>
                 <button
                   onClick={saveSettings}
-                  className="px-3 py-1.5 bg-surface-overlay border border-border text-foreground font-mono text-[10px] tracking-wider uppercase hover:border-ember/40 transition-all"
+                  className="px-3 py-1.5 bg-surface-overlay border border-border text-foreground font-mono text-[12px] tracking-wider uppercase hover:border-ember/40 transition-all"
                 >
                   Save
                 </button>
@@ -463,7 +463,7 @@ export default function AdminPage() {
             </div>
             <div className="p-4 grid grid-cols-2 sm:grid-cols-5 gap-4">
               <div>
-                <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-2">
                   Scrape 1 (UTC)
                 </label>
                 <input
@@ -475,7 +475,7 @@ export default function AdminPage() {
                 <p className="font-mono text-[8px] text-muted mt-1">7 AM MT</p>
               </div>
               <div>
-                <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-2">
                   Scrape 2 (UTC)
                 </label>
                 <input
@@ -487,7 +487,7 @@ export default function AdminPage() {
                 <p className="font-mono text-[8px] text-muted mt-1">5 PM MT</p>
               </div>
               <div>
-                <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-2">
                   Enabled
                 </label>
                 <button
@@ -502,7 +502,7 @@ export default function AdminPage() {
                 </button>
               </div>
               <div>
-                <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-2">
                   Days Back
                 </label>
                 <input
@@ -513,7 +513,7 @@ export default function AdminPage() {
                 />
               </div>
               <div>
-                <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-2">
                   Days Ahead
                 </label>
                 <input
@@ -524,7 +524,7 @@ export default function AdminPage() {
                 />
               </div>
               <div>
-                <label className="block font-mono text-[9px] tracking-[0.2em] text-muted uppercase mb-2">
+                <label className="block font-mono text-[11px] tracking-[0.2em] text-muted uppercase mb-2">
                   Min Staffing
                 </label>
                 <input
@@ -548,31 +548,37 @@ export default function AdminPage() {
               <div className="flex gap-2">
                 <button
                   onClick={importCallInList}
-                  className="px-3 py-1.5 bg-success/20 border border-success/30 text-success font-mono text-[10px] tracking-wider uppercase hover:bg-success/30 transition-all"
+                  className="px-3 py-1.5 bg-success/20 border border-success/30 text-success font-mono text-[12px] tracking-wider uppercase hover:bg-success/30 transition-all"
                 >
                   Import Call-In List
                 </button>
                 <button
                   onClick={matchUsers}
-                  className="px-3 py-1.5 bg-amber/20 border border-amber/30 text-amber font-mono text-[10px] tracking-wider uppercase hover:bg-amber/30 transition-all"
+                  className="px-3 py-1.5 bg-amber/20 border border-amber/30 text-amber font-mono text-[12px] tracking-wider uppercase hover:bg-amber/30 transition-all"
                 >
                   Match Users
                 </button>
                 <button
                   onClick={enrichCallInList}
-                  className="px-3 py-1.5 bg-platoon-3/20 border border-platoon-3/30 text-platoon-3 font-mono text-[10px] tracking-wider uppercase hover:bg-platoon-3/30 transition-all"
+                  className="px-3 py-1.5 bg-platoon-3/20 border border-platoon-3/30 text-platoon-3 font-mono text-[12px] tracking-wider uppercase hover:bg-platoon-3/30 transition-all"
                 >
                   Add First Names
                 </button>
+                <a
+                  href="/dashboard/admin/callin"
+                  className="px-3 py-1.5 bg-platoon-2/20 border border-platoon-2/30 text-platoon-2 font-mono text-[12px] tracking-wider uppercase hover:bg-platoon-2/30 transition-all"
+                >
+                  Review List
+                </a>
                 <button
                   onClick={backfillYTD}
-                  className="px-3 py-1.5 bg-ember/20 border border-ember/30 text-ember font-mono text-[10px] tracking-wider uppercase hover:bg-ember/30 transition-all"
+                  className="px-3 py-1.5 bg-ember/20 border border-ember/30 text-ember font-mono text-[12px] tracking-wider uppercase hover:bg-ember/30 transition-all"
                 >
                   Backfill YTD
                 </button>
                 <button
                   onClick={clearCache}
-                  className="px-3 py-1.5 bg-alert-red/20 border border-alert-red/30 text-alert-red font-mono text-[10px] tracking-wider uppercase hover:bg-alert-red/30 transition-all"
+                  className="px-3 py-1.5 bg-alert-red/20 border border-alert-red/30 text-alert-red font-mono text-[12px] tracking-wider uppercase hover:bg-alert-red/30 transition-all"
                 >
                   Clear All
                 </button>
@@ -581,11 +587,11 @@ export default function AdminPage() {
             <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
                 <p className="font-display text-2xl font-bold text-ember">{cacheStats.staffingEntries}</p>
-                <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mt-1">Roster Entries</p>
+                <p className="font-mono text-[11px] tracking-[0.2em] text-muted uppercase mt-1">Roster Entries</p>
               </div>
               <div>
                 <p className="font-display text-2xl font-bold">{cacheStats.otwpEntries}</p>
-                <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mt-1">OTWP Entries</p>
+                <p className="font-mono text-[11px] tracking-[0.2em] text-muted uppercase mt-1">OTWP Entries</p>
               </div>
               <div>
                 <p className="font-mono text-xs text-foreground">
@@ -593,7 +599,7 @@ export default function AdminPage() {
                     ? new Date(cacheStats.lastStaffingScrape).toLocaleString()
                     : "Never"}
                 </p>
-                <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mt-1">Last Roster Scrape</p>
+                <p className="font-mono text-[11px] tracking-[0.2em] text-muted uppercase mt-1">Last Roster Scrape</p>
               </div>
               <div>
                 <p className="font-mono text-xs text-foreground">
@@ -601,7 +607,7 @@ export default function AdminPage() {
                     ? new Date(cacheStats.lastOtwpScrape).toLocaleString()
                     : "Never"}
                 </p>
-                <p className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase mt-1">Last OTWP Scrape</p>
+                <p className="font-mono text-[11px] tracking-[0.2em] text-muted uppercase mt-1">Last OTWP Scrape</p>
               </div>
             </div>
           </div>
@@ -627,7 +633,7 @@ export default function AdminPage() {
                       <div className="flex items-center gap-2">
                         <span className="w-3 h-3" style={{ backgroundColor: `var(--platoon-${plt})` }} />
                         <span className="font-mono text-sm font-bold">PLT-{plt}</span>
-                        <span className="font-mono text-[10px] text-muted">{ci?.members || 0} members</span>
+                        <span className="font-mono text-[12px] text-muted">{ci?.members || 0} members</span>
                       </div>
                       <span className="font-mono text-xs text-ember">
                         Next up: {ci?.currentName || `Pos #${currentPos}`}
@@ -688,12 +694,12 @@ export default function AdminPage() {
                         {r.lastName}{r.firstName ? `, ${r.firstName}` : ""}
                       </span>
                       {r.payrollNumber && (
-                        <span className="font-mono text-[10px] text-muted">#{r.payrollNumber}</span>
+                        <span className="font-mono text-[12px] text-muted">#{r.payrollNumber}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span
-                        className="font-mono text-[10px] tracking-wider px-1.5 py-0.5"
+                        className="font-mono text-[12px] tracking-wider px-1.5 py-0.5"
                         style={{
                           backgroundColor: `color-mix(in srgb, var(--platoon-${r.platoon}) 15%, transparent)`,
                           color: `var(--platoon-${r.platoon})`,
@@ -701,7 +707,7 @@ export default function AdminPage() {
                       >
                         PLT-{r.platoon}
                       </span>
-                      <span className="font-mono text-[10px] text-muted">Pos #{r.position}</span>
+                      <span className="font-mono text-[12px] text-muted">Pos #{r.position}</span>
                     </div>
                   </div>
                 ))}
@@ -752,8 +758,8 @@ export default function AdminPage() {
                 { code: "Sick", color: "text-muted", bg: "", label: "Sick — Off Roster" },
               ].map((s) => (
                 <div key={s.code} className={`flex items-center justify-between px-3 py-1.5 ${s.bg}`}>
-                  <span className={`font-mono text-[11px] font-bold ${s.color}`}>{s.code}</span>
-                  <span className="font-mono text-[10px] text-muted">{s.label}</span>
+                  <span className={`font-mono text-[13px] font-bold ${s.color}`}>{s.code}</span>
+                  <span className="font-mono text-[12px] text-muted">{s.label}</span>
                 </div>
               ))}
             </div>

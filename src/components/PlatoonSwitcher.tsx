@@ -25,7 +25,7 @@ export default function PlatoonSwitcher({
             key={p.id}
             onClick={() => onChange(p.id)}
             className={`
-              relative px-4 py-2 font-mono text-[11px] tracking-[0.2em] uppercase transition-all
+              relative px-4 py-2 font-mono text-[13px] tracking-[0.2em] uppercase transition-all
               ${
                 isActive
                   ? "text-white"

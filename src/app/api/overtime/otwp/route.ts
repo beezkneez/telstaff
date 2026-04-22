@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
-import { getOnShiftPlatoons, getLast6Off } from "@/lib/rotation";
+import { getOnShiftPlatoons, getLast6Off, getRecentCompletedShifts } from "@/lib/rotation";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -39,7 +39,14 @@ export async function GET(req: Request) {
   // Also include today and yesterday so we always have fresh data
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-  const allDates = [...new Set([...eligibleDates, today, yesterday])];
+
+  // Plus the last 2 completed shifts of every working platoon ≠ user, so the recent-call-ins
+  // panel on /dashboard/overtime gets populated by the same scrape.
+  const recentDates = ["1", "2", "3", "4"]
+    .filter((p) => p !== userPlatoon)
+    .flatMap((p) => getRecentCompletedShifts(today, p, 2).map((r) => r.date));
+
+  const allDates = [...new Set([...eligibleDates, today, yesterday, ...recentDates])];
 
   const scrapeList = allDates
     .map((d) => {

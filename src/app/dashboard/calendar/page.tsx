@@ -125,7 +125,7 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between mb-4 animate-fade-slide-up delay-150">
         <div className="flex items-center gap-2">
           <button onClick={prevMonth} className="px-3 py-2 bg-surface border border-border font-mono text-xs hover:border-ember/40 transition-colors">←</button>
-          <button onClick={goToday} className="px-3 py-2 bg-surface border border-border font-mono text-[10px] tracking-wider uppercase hover:border-ember/40 transition-colors">Today</button>
+          <button onClick={goToday} className="px-3 py-2 bg-surface border border-border font-mono text-[12px] tracking-wider uppercase hover:border-ember/40 transition-colors">Today</button>
           <button onClick={nextMonth} className="px-3 py-2 bg-surface border border-border font-mono text-xs hover:border-ember/40 transition-colors">→</button>
         </div>
         <h2 className="font-display text-2xl font-bold tracking-[0.1em]">
@@ -138,19 +138,19 @@ export default function CalendarPage() {
         {["1", "2", "3", "4"].map((p) => (
           <div key={p} className="flex items-center gap-1.5">
             <span className="w-3 h-3" style={{ backgroundColor: PLATOON_COLORS[p] }} />
-            <span className={`font-mono text-[11px] tracking-wider ${userPlatoon === p ? "text-foreground font-bold" : "text-muted"}`}>
+            <span className={`font-mono text-[13px] tracking-wider ${userPlatoon === p ? "text-foreground font-bold" : "text-muted"}`}>
               PLT-{p}{userPlatoon === p ? " (You)" : ""}
             </span>
           </div>
         ))}
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 border-2 border-black bg-surface" />
-          <span className="font-mono text-[10px] text-muted">Stat</span>
+          <span className="font-mono text-[12px] text-muted">Stat</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[10px] text-muted">✕ = Payday</span>
+          <span className="font-mono text-[12px] text-muted">✕ = Payday</span>
         </div>
-        <span className="font-mono text-[10px] text-muted">Top = Day · Bottom = Night</span>
+        <span className="font-mono text-[12px] text-muted">Top = Day · Bottom = Night</span>
       </div>
 
       {/* Calendar */}

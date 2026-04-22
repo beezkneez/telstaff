@@ -97,14 +97,14 @@ export default function StationCard({
               <h3 className="font-display text-xl font-bold tracking-[0.15em]">
                 STN-{String(station).padStart(2, "0")}
               </h3>
-              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
+              <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase">
                 {activeTrucks.length} {activeTrucks.length === 1 ? "unit" : "units"} // {activeCrew}{offRosterMembers.length > 0 ? `/${totalCrew}` : ""} personnel
               </p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 bg-success" />
-            <span className="font-mono text-[10px] tracking-wider text-success uppercase">
+            <span className="font-mono text-[12px] tracking-wider text-success uppercase">
               Active
             </span>
           </div>
@@ -119,10 +119,10 @@ export default function StationCard({
             <div key={truck.truck} className="px-4 py-3">
               {/* Truck header */}
               <div className="flex items-center gap-2 mb-2.5">
-                <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-mono tracking-[0.15em] uppercase border ${colors.bg} ${colors.accent}`}>
+                <span className={`inline-flex items-center px-2 py-0.5 text-[12px] font-mono tracking-[0.15em] uppercase border ${colors.bg} ${colors.accent}`}>
                   {truck.truck}
                 </span>
-                <span className="font-mono text-[10px] text-muted">
+                <span className="font-mono text-[12px] text-muted">
                   {truck.crew.length}x
                 </span>
               </div>
@@ -163,7 +163,7 @@ export default function StationCard({
                     className={`flex items-center justify-between py-1.5 px-2 hover:bg-surface-overlay/30 transition-colors group ${statusBg}`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-5 h-5 flex items-center justify-center font-mono text-[9px] font-bold border ${
+                      <div className={`w-5 h-5 flex items-center justify-center font-mono text-[11px] font-bold border ${
                         member.rank?.includes("Captain")
                           ? "bg-amber/10 border-amber/30 text-amber"
                           : member.rank?.includes("Lieutenant")
@@ -178,7 +178,7 @@ export default function StationCard({
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       {member.status && member.status !== "REG" && (
-                        <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 border ${
+                        <span className={`font-mono text-[12px] tracking-wider px-1.5 py-0.5 border ${
                           isVac
                             ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
                             : isTNW
@@ -202,7 +202,7 @@ export default function StationCard({
                           {isVac ? "VAC" : isTNW ? "TNW" : isTW ? (st === "twu" ? "TWU" : st === "24tw" ? "24TW" : "TW") : isLieu ? "LIEU" : isSA ? "SA" : isSUR ? "SUR" : isATI ? "ATI" : isIns ? "INS" : isRelSupp ? "REL" : member.status}
                         </span>
                       )}
-                      <span className={`font-mono text-[11px] tracking-wider uppercase ${
+                      <span className={`font-mono text-[13px] tracking-wider uppercase ${
                         member.rank?.includes("Captain")
                           ? "text-amber"
                           : member.rank?.includes("Lieutenant")
@@ -225,7 +225,7 @@ export default function StationCard({
       {offRosterMembers.length > 0 && (
         <div className="border-t border-border">
           <div className="px-4 py-2 bg-surface-overlay/20 border-b border-border-subtle">
-            <span className="font-mono text-[9px] tracking-[0.2em] text-muted uppercase">
+            <span className="font-mono text-[11px] tracking-[0.2em] text-muted uppercase">
               Off Roster — {offRosterMembers.length} personnel
             </span>
           </div>
@@ -246,7 +246,7 @@ export default function StationCard({
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-5 h-5 flex items-center justify-center font-mono text-[9px] font-bold bg-surface-overlay border border-border text-muted">
+                      <div className="w-5 h-5 flex items-center justify-center font-mono text-[11px] font-bold bg-surface-overlay border border-border text-muted">
                         {member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
                       <span className="font-mono text-sm truncate text-muted">
@@ -255,7 +255,7 @@ export default function StationCard({
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       {(isVac || isTNW || isLieu || isSA || isSUR) && (
-                        <span className={`font-mono text-[10px] tracking-wider px-1.5 py-0.5 border ${
+                        <span className={`font-mono text-[12px] tracking-wider px-1.5 py-0.5 border ${
                           isVac ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
                             : isTNW ? "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20"
                             : isSUR ? "bg-purple-950/40 text-purple-300 border-purple-400/20"
@@ -265,7 +265,7 @@ export default function StationCard({
                           {isVac ? "VAC" : isTNW ? "TNW" : isSUR ? "SUR" : isSA ? "SA" : "LIEU"}
                         </span>
                       )}
-                      <span className="font-mono text-[11px] tracking-wider uppercase text-muted">
+                      <span className="font-mono text-[13px] tracking-wider uppercase text-muted">
                         {member.rank?.replace(" Hz3", "").replace(" Pump,Hz3", "")}
                       </span>
                     </div>

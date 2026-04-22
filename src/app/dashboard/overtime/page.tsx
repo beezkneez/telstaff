@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 
-interface RecentShiftHole {
+interface RecentShiftCallIn {
   platoon: string;
   shift: string;
   date: string;
-  ffHoles: number;
-  actualCrew: number;
-  requiredCrew: number;
+  otwpCount: number;
+  noData?: boolean;
 }
 
 interface OvertimeData {
@@ -73,7 +72,7 @@ interface OvertimeData {
   }[];
   ytdNeeded: { platoon: string; total: number }[];
   ytdWorked: { platoon: string; total: number }[];
-  recentShiftHoles: RecentShiftHole[];
+  recentShiftCallIns: RecentShiftCallIn[];
 }
 
 interface OTWPResult {
@@ -133,14 +132,14 @@ export default function OvertimePage() {
             <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-[0.1em]">
               OVERTIME<span className="text-ember">//</span>INTEL
             </h1>
-            <p className="font-mono text-[11px] tracking-[0.15em] text-muted mt-1 uppercase">{displayDate}</p>
+            <p className="font-mono text-[13px] tracking-[0.15em] text-muted mt-1 uppercase">{displayDate}</p>
           </div>
           <div className="flex items-center gap-3">
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-2 bg-surface border border-border font-mono text-[11px] tracking-wider text-foreground cursor-pointer"
+              className="px-3 py-2 bg-surface border border-border font-mono text-[13px] tracking-wider text-foreground cursor-pointer"
             />
             <button
               onClick={async () => {
@@ -151,14 +150,14 @@ export default function OvertimePage() {
                 setData(d);
                 setLoading(false);
               }}
-              className="px-3 py-2 bg-surface border border-border font-mono text-[10px] tracking-wider text-muted hover:text-ember hover:border-ember/40 uppercase transition-colors"
+              className="px-3 py-2 bg-surface border border-border font-mono text-[12px] tracking-wider text-muted hover:text-ember hover:border-ember/40 uppercase transition-colors"
             >
               Update List
             </button>
             {isAdmin && (
               <Link
                 href="/dashboard/overtime/analytics"
-                className="px-3 py-2 bg-surface border border-border font-mono text-[10px] tracking-wider text-muted hover:text-ember hover:border-ember/40 uppercase transition-colors"
+                className="px-3 py-2 bg-surface border border-border font-mono text-[12px] tracking-wider text-muted hover:text-ember hover:border-ember/40 uppercase transition-colors"
               >
                 Analytics →
               </Link>
@@ -181,7 +180,7 @@ export default function OvertimePage() {
           <div className="flex items-center justify-between p-3 bg-surface border border-border animate-fade-slide-up">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 ${data.dataStale ? "bg-amber" : "bg-success"}`} />
-              <span className="font-mono text-[10px] text-muted tracking-wider">
+              <span className="font-mono text-[12px] text-muted tracking-wider">
                 {data.lastScrapedAt ? (() => {
                   const scraped = new Date(data.lastScrapedAt);
                   const ago = Math.round((Date.now() - scraped.getTime()) / 60000);
@@ -189,7 +188,7 @@ export default function OvertimePage() {
                   return `Last scraped ${timeStr} (${ago < 60 ? `${ago}m ago` : `${Math.round(ago / 60)}h ago`})`;
                 })() : "No scrape data available"}
               </span>
-              <span className="font-mono text-[10px] text-muted/50">
+              <span className="font-mono text-[12px] text-muted/50">
                 // Next: 6:30a, 7a, 10a, 1p, 4:30p, 5p
               </span>
             </div>
@@ -207,7 +206,7 @@ export default function OvertimePage() {
                 setData(d);
                 setLoading(false);
               }}
-              className="px-3 py-1 font-mono text-[10px] tracking-wider uppercase bg-surface-raised border border-border text-muted hover:text-foreground hover:border-ember/40 transition-all"
+              className="px-3 py-1 font-mono text-[12px] tracking-wider uppercase bg-surface-raised border border-border text-muted hover:text-foreground hover:border-ember/40 transition-all"
             >
               Rescrape Now
             </button>
@@ -218,7 +217,7 @@ export default function OvertimePage() {
             <div className="bg-surface border border-border p-5 animate-fade-slide-up">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">Last 6-Off — OT Call-Ins</h2>
-                {otwpLoading && <span className="font-mono text-[9px] text-ember tracking-wider uppercase animate-pulse-ember">Scraping...</span>}
+                {otwpLoading && <span className="font-mono text-[11px] text-ember tracking-wider uppercase animate-pulse-ember">Scraping...</span>}
               </div>
               <div className="space-y-1">
                 {data.sixOffDetails.map((day, i) => {
@@ -227,28 +226,28 @@ export default function OvertimePage() {
                   return (
                     <div key={day.date} className={`flex items-center justify-between px-3 py-2.5 ${day.eligible ? "bg-surface-raised/50" : "bg-surface-raised/20 opacity-60"}`}>
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-[10px] text-muted w-4">{i + 1}</span>
+                        <span className="font-mono text-[12px] text-muted w-4">{i + 1}</span>
                         <span className="font-mono text-sm text-foreground">{dayLabel}</span>
-                        {!day.eligible && <span className="font-mono text-[10px] text-muted tracking-wider">NOT ELIGIBLE</span>}
+                        {!day.eligible && <span className="font-mono text-[12px] text-muted tracking-wider">NOT ELIGIBLE</span>}
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] text-amber tracking-wider">DAY</span>
-                          <span className="font-mono text-[10px] px-1.5 py-0.5" style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>PLT-{day.dayShiftPlatoon}</span>
+                          <span className="font-mono text-[12px] text-amber tracking-wider">DAY</span>
+                          <span className="font-mono text-[12px] px-1.5 py-0.5" style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>PLT-{day.dayShiftPlatoon}</span>
                           {otwp ? (
-                            <span className={`font-mono text-[11px] font-bold ml-1 ${otwp.dayShiftCount > 0 ? "text-ember" : "text-muted"}`}>
+                            <span className={`font-mono text-[13px] font-bold ml-1 ${otwp.dayShiftCount > 0 ? "text-ember" : "text-muted"}`}>
                               {otwp.dayShiftCount > 0 ? otwp.dayShiftCount : "0"}
                             </span>
-                          ) : otwpLoading ? <span className="font-mono text-[9px] text-muted ml-1">...</span> : <span className="font-mono text-[10px] text-muted/40 ml-1">—</span>}
+                          ) : otwpLoading ? <span className="font-mono text-[11px] text-muted ml-1">...</span> : <span className="font-mono text-[12px] text-muted/40 ml-1">—</span>}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] text-platoon-3 tracking-wider">NIGHT</span>
-                          <span className="font-mono text-[10px] px-1.5 py-0.5" style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>PLT-{day.nightShiftPlatoon}</span>
+                          <span className="font-mono text-[12px] text-platoon-3 tracking-wider">NIGHT</span>
+                          <span className="font-mono text-[12px] px-1.5 py-0.5" style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>PLT-{day.nightShiftPlatoon}</span>
                           {otwp ? (
-                            <span className={`font-mono text-[11px] font-bold ml-1 ${otwp.nightShiftCount > 0 ? "text-ember" : "text-muted"}`}>
+                            <span className={`font-mono text-[13px] font-bold ml-1 ${otwp.nightShiftCount > 0 ? "text-ember" : "text-muted"}`}>
                               {otwp.nightShiftCount > 0 ? otwp.nightShiftCount : "0"}
                             </span>
-                          ) : otwpLoading ? <span className="font-mono text-[9px] text-muted ml-1">...</span> : <span className="font-mono text-[10px] text-muted/40 ml-1">—</span>}
+                          ) : otwpLoading ? <span className="font-mono text-[11px] text-muted ml-1">...</span> : <span className="font-mono text-[12px] text-muted/40 ml-1">—</span>}
                         </div>
                       </div>
                     </div>
@@ -258,7 +257,7 @@ export default function OvertimePage() {
               {otwpData.length > 0 && (
                 <div className="mt-3 p-3 bg-surface-raised border border-border-subtle">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Total OT Call-Ins</span>
+                    <span className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase">Total OT Call-Ins</span>
                     <div className="flex gap-4">
                       <span className="font-mono text-xs"><span className="text-amber">Day:</span> <span className="text-ember font-bold">{otwpData.reduce((s, o) => s + o.dayShiftCount, 0)}</span></span>
                       <span className="font-mono text-xs"><span className="text-platoon-3">Night:</span> <span className="text-ember font-bold">{otwpData.reduce((s, o) => s + o.nightShiftCount, 0)}</span></span>
@@ -268,7 +267,7 @@ export default function OvertimePage() {
                 </div>
               )}
               {!otwpLoading && otwpData.length === 0 && (
-                <p className="mt-3 font-mono text-[10px] text-muted/50 tracking-wider">No OTWP data scraped yet — tap Update List to fetch.</p>
+                <p className="mt-3 font-mono text-[12px] text-muted/50 tracking-wider">No OTWP data scraped yet — tap Update List to fetch.</p>
               )}
             </div>
           )}
@@ -277,67 +276,75 @@ export default function OvertimePage() {
           <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-75">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">Your Status</h2>
-              <span className="font-mono text-[10px] tracking-wider uppercase px-2 py-1"
+              <span className="font-mono text-[12px] tracking-wider uppercase px-2 py-1"
                 style={{ backgroundColor: `color-mix(in srgb, var(--${PLATOON_COLORS[data.userPlatoon]}) 15%, transparent)`, color: `var(--${PLATOON_COLORS[data.userPlatoon]})`, border: `1px solid color-mix(in srgb, var(--${PLATOON_COLORS[data.userPlatoon]}) 30%, transparent)` }}>
                 PLT-{data.userPlatoon}
               </span>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Shift</p>
+                <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Shift</p>
                 <p className="font-mono text-sm text-foreground">{data.userShift.label}</p>
               </div>
               <div>
-                <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Status</p>
+                <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Status</p>
                 <p className={`font-mono text-sm ${data.userShift.type === "day" || data.userShift.type === "night" ? "text-success" : "text-amber"}`}>
                   {data.userShift.type === "day" ? "On Shift (Day)" : data.userShift.type === "night" ? "On Shift (Night)" : "Off Duty"}
                 </p>
               </div>
               <div>
-                <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">OT Eligible</p>
+                <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">OT Eligible</p>
                 <p className={`font-mono text-sm ${data.eligible ? "text-ember" : "text-muted"}`}>{data.eligible ? "YES" : "No"}</p>
               </div>
             </div>
           </div>
 
-          {/* Recent Shift Holes — last 2 shifts per working platoon */}
-          {data.recentShiftHoles && data.recentShiftHoles.length > 0 && (
+          {/* Recent Shift Call-Ins — last 2 completed shifts per working platoon */}
+          {data.recentShiftCallIns && data.recentShiftCallIns.length > 0 && (() => {
+            const withData = data.recentShiftCallIns.filter((h) => !h.noData);
+            return (
             <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-100">
-              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-1">Recent Shift Holes</h2>
-              <p className="font-mono text-[10px] text-muted tracking-wider mb-4">Last 2 shifts per working platoon — weighted 70% in prediction</p>
+              <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-1">Recent Shift Call-Ins</h2>
+              <p className="font-mono text-[12px] text-muted tracking-wider mb-4">Last 2 shifts per working platoon — OTWP count, weighted 70% in prediction</p>
               <div className="space-y-1">
-                {data.recentShiftHoles.map((h, i) => {
+                {data.recentShiftCallIns.map((h, i) => {
                   const dayLabel = new Date(h.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                   return (
-                    <div key={i} className="flex items-center justify-between px-3 py-2.5 bg-surface-raised/50">
+                    <div key={i} className="flex items-center justify-between px-3 py-2.5 border-b border-border-subtle last:border-b-0">
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-[10px] px-1.5 py-0.5"
-                          style={{ backgroundColor: `color-mix(in srgb, var(--${PLATOON_COLORS[h.platoon]}) 15%, transparent)`, color: `var(--${PLATOON_COLORS[h.platoon]})` }}>
+                        <span className="font-mono text-sm font-bold tracking-wider"
+                          style={{ color: `var(--${PLATOON_COLORS[h.platoon]})` }}>
                           PLT-{h.platoon}
                         </span>
-                        <span className={`font-mono text-[10px] tracking-wider ${h.shift === "day" ? "text-amber" : "text-platoon-3"} uppercase`}>{h.shift}</span>
+                        <span className={`font-mono text-[13px] tracking-wider ${h.shift === "day" ? "text-amber" : "text-platoon-3"} uppercase`}>{h.shift}</span>
                         <span className="font-mono text-sm text-foreground">{dayLabel}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`font-mono text-sm font-bold ${h.ffHoles > 0 ? "text-ember" : h.ffHoles < 0 ? "text-success" : "text-muted"}`}>
-                          {h.ffHoles > 0 ? `-${h.ffHoles}` : h.ffHoles < 0 ? `+${Math.abs(h.ffHoles)}` : "="} holes
-                        </span>
-                        <span className="font-mono text-[10px] text-muted">{h.actualCrew}/{h.requiredCrew}</span>
+                        {h.noData ? (
+                          <span className="font-mono text-[13px] tracking-wider text-muted uppercase">Not scraped yet</span>
+                        ) : (
+                          <span className={`font-mono text-base font-bold ${h.otwpCount > 0 ? "text-ember" : "text-muted"}`}>
+                            {h.otwpCount} call-{h.otwpCount === 1 ? "in" : "ins"}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-3 p-3 bg-surface-raised border border-border-subtle">
+              <div className="mt-4 pt-3 border-t border-border">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Avg Holes/Shift</span>
-                  <span className="font-mono text-sm text-ember font-bold">
-                    {(data.recentShiftHoles.reduce((s, h) => s + h.ffHoles, 0) / data.recentShiftHoles.length).toFixed(1)}
+                  <span className="font-mono text-[13px] tracking-[0.2em] text-muted uppercase">Avg Call-Ins/Shift</span>
+                  <span className="font-mono text-base text-ember font-bold">
+                    {withData.length > 0
+                      ? (withData.reduce((s, h) => s + h.otwpCount, 0) / withData.length).toFixed(1)
+                      : "—"}
                   </span>
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* Prediction */}
           {data.prediction && data.eligible && (
@@ -348,7 +355,7 @@ export default function OvertimePage() {
             }`}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">Prediction</h2>
-                <span className={`font-mono text-[10px] tracking-wider uppercase px-2 py-1 border ${
+                <span className={`font-mono text-[12px] tracking-wider uppercase px-2 py-1 border ${
                   data.prediction.probability === "high" ? "bg-ember/20 text-ember border-ember/30"
                     : data.prediction.probability === "medium" ? "bg-amber/20 text-amber border-amber/30"
                     : "bg-surface-overlay text-muted border-border"
@@ -358,19 +365,19 @@ export default function OvertimePage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">You Are</p>
+                  <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">You Are</p>
                   <p className="font-display text-2xl font-bold text-foreground">{data.prediction.positionsAhead} away</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Last 6-Off OT</p>
+                  <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Last 6-Off OT</p>
                   <p className="font-display text-2xl font-bold text-ember">{data.prediction.last6OffTotal}</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Call-Through</p>
+                  <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Call-Through</p>
                   <p className="font-display text-2xl font-bold text-amber">{data.prediction.callThroughRatio}:1</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Names Called</p>
+                  <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Names Called</p>
                   <p className="font-display text-2xl font-bold">~{data.prediction.namesTheyWillCall}</p>
                 </div>
               </div>
@@ -380,10 +387,10 @@ export default function OvertimePage() {
               {data.prediction.scenarios && data.prediction.scenarios.length > 0 && (
                 <div className="mt-4 border border-border-subtle">
                   <div className="px-3 py-2 bg-surface-raised/50 border-b border-border-subtle flex items-center justify-between">
-                    <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">
+                    <span className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase">
                       What If — Tonight&apos;s Shift
                     </span>
-                    <span className="font-mono text-[10px] text-ember">
+                    <span className="font-mono text-[12px] text-ember">
                       {data.prediction.scenarios[0]?.namesCalledPerShift
                         ? `${Math.round(data.prediction.scenarios[0].namesCalledPerShift / 2)} holes to fill`
                         : ""}
@@ -398,22 +405,22 @@ export default function OvertimePage() {
                           <span className={`w-2 h-2 shrink-0 ${sc.getsCalled ? "bg-ember" : "bg-muted/30"}`} />
                           <div>
                             <span className="font-mono text-xs text-foreground">{sc.acceptRate}</span>
-                            <span className="font-mono text-[10px] text-muted ml-2">{sc.label}</span>
+                            <span className="font-mono text-[12px] text-muted ml-2">{sc.label}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                          <span className="font-mono text-[10px] text-muted">{sc.namesCalledPerShift} names</span>
+                          <span className="font-mono text-[12px] text-muted">{sc.namesCalledPerShift} names</span>
                           {sc.getsCalled ? (
-                            <span className="font-mono text-[11px] text-ember font-bold">YES (+{sc.margin})</span>
+                            <span className="font-mono text-[13px] text-ember font-bold">YES (+{sc.margin})</span>
                           ) : (
-                            <span className="font-mono text-[11px] text-muted">No ({sc.margin})</span>
+                            <span className="font-mono text-[13px] text-muted">No ({sc.margin})</span>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
                   <div className="px-3 py-2 bg-surface-raised/30">
-                    <p className="font-mono text-[10px] text-muted leading-relaxed">
+                    <p className="font-mono text-[12px] text-muted leading-relaxed">
                       You&apos;re {data.prediction.positionsAhead} away. Tonight has {Math.round(data.prediction.scenarios[0]?.namesCalledPerShift / 2) || "?"} holes to fill.
                       {data.prediction.scenarios.filter((s) => s.getsCalled).length === 0
                         ? " Even at the worst acceptance rate, they won't reach you tonight."
@@ -457,41 +464,41 @@ export default function OvertimePage() {
                   return (
                     <div key={day.date} className={`flex items-center justify-between px-3 py-2.5 ${day.eligible ? "bg-surface-raised/50" : "opacity-50"}`}>
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-[10px] text-muted w-4">{i + 1}</span>
+                        <span className="font-mono text-[12px] text-muted w-4">{i + 1}</span>
                         <span className="font-mono text-sm text-foreground">{dayLabel}</span>
-                        {!day.eligible && <span className="font-mono text-[10px] text-muted tracking-wider">NOT ELIGIBLE</span>}
+                        {!day.eligible && <span className="font-mono text-[12px] text-muted tracking-wider">NOT ELIGIBLE</span>}
                         {day.statHoliday && day.statDaysAway === 0 && (
-                          <span className="font-mono text-[10px] tracking-wider px-1.5 py-0.5 bg-amber/10 text-amber border border-amber/20">{day.statHoliday}</span>
+                          <span className="font-mono text-[12px] tracking-wider px-1.5 py-0.5 bg-amber/10 text-amber border border-amber/20">{day.statHoliday}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] text-amber tracking-wider">DAY</span>
-                          <span className="font-mono text-[10px] px-1.5 py-0.5"
+                          <span className="font-mono text-[12px] text-amber tracking-wider">DAY</span>
+                          <span className="font-mono text-[12px] px-1.5 py-0.5"
                             style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>
                             PLT-{day.dayShiftPlatoon}
                           </span>
                           {hasDayData && (
                             <>
-                              <span className={`font-mono text-[10px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                              <span className={`font-mono text-[12px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
                                 [{dayNoData ? "—" : dayShiftHoles > 0 ? `-${dayShiftHoles}` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}` : "="}]
                               </span>
-                              {dayActual != null && <span className="font-mono text-[9px] text-muted/50">{dayActual}/216</span>}
+                              {dayActual != null && <span className="font-mono text-[11px] text-muted/50">{dayActual}/216</span>}
                             </>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] text-platoon-3 tracking-wider">NIGHT</span>
-                          <span className="font-mono text-[10px] px-1.5 py-0.5"
+                          <span className="font-mono text-[12px] text-platoon-3 tracking-wider">NIGHT</span>
+                          <span className="font-mono text-[12px] px-1.5 py-0.5"
                             style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>
                             PLT-{day.nightShiftPlatoon}
                           </span>
                           {hasNightData && (
                             <>
-                              <span className={`font-mono text-[10px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                              <span className={`font-mono text-[12px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
                                 [{nightNoData ? "—" : nightShiftHoles > 0 ? `-${nightShiftHoles}` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}` : "="}]
                               </span>
-                              {nightActual != null && <span className="font-mono text-[9px] text-muted/50">{nightActual}/216</span>}
+                              {nightActual != null && <span className="font-mono text-[11px] text-muted/50">{nightActual}/216</span>}
                             </>
                           )}
                         </div>
@@ -516,21 +523,21 @@ export default function OvertimePage() {
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">Call-In List — PLT-{data.userPlatoon}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Next Up</p>
+                  <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Next Up</p>
                   <p className="font-mono text-sm text-ember font-bold">{data.callInData.currentUp}</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Your Position</p>
+                  <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Your Position</p>
                   <p className="font-mono text-sm text-foreground">{data.callInData.userPosition ? `#${data.callInData.userPosition}` : "Not found"}</p>
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Ahead of You</p>
+                  <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Ahead of You</p>
                   <p className={`font-mono text-sm ${data.callInData.positionsAhead !== null && data.callInData.positionsAhead <= 15 ? "text-ember font-bold" : "text-foreground"}`}>
                     {data.callInData.positionsAhead ?? "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-1">Total on List</p>
+                  <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-1">Total on List</p>
                   <p className="font-mono text-sm text-foreground">{data.callInData.totalMembers}</p>
                 </div>
               </div>
@@ -538,8 +545,8 @@ export default function OvertimePage() {
               {/* Call-in list preview */}
               <div className="border border-border-subtle">
                 <div className="px-3 py-2 bg-surface-raised border-b border-border-subtle flex items-center justify-between">
-                  <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">Call-In Order</span>
-                  <span className="font-mono text-[10px] tracking-[0.2em] text-ember uppercase">{data.callInData.currentUp} is first up</span>
+                  <span className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase">Call-In Order</span>
+                  <span className="font-mono text-[12px] tracking-[0.2em] text-ember uppercase">{data.callInData.currentUp} is first up</span>
                 </div>
                 <div className="divide-y divide-border-subtle">
                   {data.callInData.nearbyMembers.map((m) => {
@@ -548,11 +555,11 @@ export default function OvertimePage() {
                     return (
                       <div key={m.position} className={`flex items-center justify-between px-3 py-2 ${isUser ? "bg-ember/10 border-l-2 border-l-ember" : isCurrentUp ? "bg-success/10 border-l-2 border-l-success" : ""}`}>
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-[10px] text-muted w-6">{m.position}</span>
+                          <span className="font-mono text-[12px] text-muted w-6">{m.position}</span>
                           <span className={`font-mono text-sm ${isUser ? "text-ember font-bold" : isCurrentUp ? "text-success font-bold" : "text-foreground"}`}>{m.name}</span>
                         </div>
-                        {isUser && <span className="font-mono text-[10px] text-ember tracking-wider uppercase">You</span>}
-                        {isCurrentUp && <span className="font-mono text-[10px] text-success tracking-wider uppercase">Next Up</span>}
+                        {isUser && <span className="font-mono text-[12px] text-ember tracking-wider uppercase">You</span>}
+                        {isCurrentUp && <span className="font-mono text-[12px] text-success tracking-wider uppercase">Next Up</span>}
                       </div>
                     );
                   })}
@@ -565,29 +572,29 @@ export default function OvertimePage() {
           {data.ytdNeeded && data.ytdNeeded.some((t) => t.total > 0) && (
             <div className="bg-surface border border-border p-5 animate-fade-slide-up delay-300">
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase mb-4">YTD OT Tally — {new Date().getFullYear()}</h2>
-              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-2">OT Call-Ins Needed (by on-shift platoon)</p>
+              <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-2">OT Call-Ins Needed (by on-shift platoon)</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                 {data.ytdNeeded.map((t) => (
                   <div key={t.platoon} className="p-3 border border-border-subtle">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-2.5 h-2.5" style={{ backgroundColor: `var(--${PLATOON_COLORS[t.platoon]})` }} />
-                      <span className="font-mono text-[10px] tracking-wider uppercase">PLT-{t.platoon}</span>
+                      <span className="font-mono text-[12px] tracking-wider uppercase">PLT-{t.platoon}</span>
                     </div>
                     <p className="font-display text-2xl font-bold" style={{ color: `var(--${PLATOON_COLORS[t.platoon]})` }}>{t.total}</p>
-                    <p className="font-mono text-[9px] text-muted mt-1">needed on their shifts</p>
+                    <p className="font-mono text-[11px] text-muted mt-1">needed on their shifts</p>
                   </div>
                 ))}
               </div>
-              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase mb-2">OT Shifts Worked (by off-duty platoon)</p>
+              <p className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase mb-2">OT Shifts Worked (by off-duty platoon)</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {data.ytdWorked.map((t) => (
                   <div key={t.platoon} className="p-3 border border-border-subtle">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-2.5 h-2.5" style={{ backgroundColor: `var(--${PLATOON_COLORS[t.platoon]})` }} />
-                      <span className="font-mono text-[10px] tracking-wider uppercase">PLT-{t.platoon}</span>
+                      <span className="font-mono text-[12px] tracking-wider uppercase">PLT-{t.platoon}</span>
                     </div>
                     <p className="font-display text-2xl font-bold text-ember">{t.total}</p>
-                    <p className="font-mono text-[9px] text-muted mt-1">OT shifts received</p>
+                    <p className="font-mono text-[11px] text-muted mt-1">OT shifts received</p>
                   </div>
                 ))}
               </div>
@@ -603,7 +610,7 @@ export default function OvertimePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-mono text-sm text-foreground">OT Analytics & Deep Dive</p>
-                  <p className="font-mono text-[10px] text-muted mt-1">
+                  <p className="font-mono text-[12px] text-muted mt-1">
                     Prediction factors, schedule holes breakdown, rotation details
                   </p>
                 </div>

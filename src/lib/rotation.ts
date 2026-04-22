@@ -188,3 +188,23 @@ export function getNext6Off(
 
   return { dates: [], eligible: [] };
 }
+
+// Find the most recent N completed day/night shifts for a platoon, working backwards
+// from `fromDate`. Skips fromDate itself (today's shift may be in progress / not started).
+export function getRecentCompletedShifts(
+  fromDate: Date | string,
+  platoon: string,
+  count: number
+): { date: string; shift: "day" | "night" }[] {
+  const d = typeof fromDate === "string" ? new Date(fromDate + "T12:00:00") : new Date(fromDate);
+  const out: { date: string; shift: "day" | "night" }[] = [];
+  for (let i = 1; i <= 20 && out.length < count; i++) {
+    const check = new Date(d);
+    check.setDate(check.getDate() - i);
+    const info = getShiftInfo(check, platoon);
+    if (info.type === "day" || info.type === "night") {
+      out.push({ date: check.toISOString().split("T")[0], shift: info.type });
+    }
+  }
+  return out;
+}

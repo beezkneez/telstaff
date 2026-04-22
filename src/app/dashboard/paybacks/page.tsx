@@ -38,7 +38,7 @@ export default function PaybacksPage() {
         <h1 className="font-display text-4xl sm:text-5xl font-bold tracking-[0.1em]">
           PAY<span className="text-ember">//</span>BACKS
         </h1>
-        <p className="font-mono text-[11px] tracking-[0.15em] text-muted mt-1 uppercase">
+        <p className="font-mono text-[13px] tracking-[0.15em] text-muted mt-1 uppercase">
           Trade shifts owed to you and by you
         </p>
       </div>
@@ -69,7 +69,7 @@ export default function PaybacksPage() {
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
                 Owes Me
               </h2>
-              <span className="font-mono text-[10px] tracking-wider text-success">
+              <span className="font-mono text-[12px] tracking-wider text-success">
                 {data.owesMe.length} {data.owesMe.length === 1 ? "entry" : "entries"}
               </span>
             </div>
@@ -88,7 +88,7 @@ export default function PaybacksPage() {
                         </span>
                         {entry.platoon && (
                           <span
-                            className="font-mono text-[9px] tracking-wider px-1.5 py-0.5"
+                            className="font-mono text-[11px] tracking-wider px-1.5 py-0.5"
                             style={{
                               backgroundColor: `color-mix(in srgb, var(--platoon-${entry.platoon}) 15%, transparent)`,
                               color: `var(--platoon-${entry.platoon})`,
@@ -99,11 +99,11 @@ export default function PaybacksPage() {
                           </span>
                         )}
                       </div>
-                      <span className="font-mono text-[9px] tracking-wider text-muted uppercase">
+                      <span className="font-mono text-[11px] tracking-wider text-muted uppercase">
                         {entry.date}
                       </span>
                     </div>
-                    <p className="font-mono text-[11px] text-muted">
+                    <p className="font-mono text-[13px] text-muted">
                       {entry.details}
                     </p>
                   </div>
@@ -118,7 +118,7 @@ export default function PaybacksPage() {
               <h2 className="font-display text-lg font-bold tracking-[0.15em] uppercase">
                 I Owe
               </h2>
-              <span className="font-mono text-[10px] tracking-wider text-ember">
+              <span className="font-mono text-[12px] tracking-wider text-ember">
                 {data.iOwe.length} {data.iOwe.length === 1 ? "entry" : "entries"}
               </span>
             </div>
@@ -137,7 +137,7 @@ export default function PaybacksPage() {
                         </span>
                         {entry.platoon && (
                           <span
-                            className="font-mono text-[9px] tracking-wider px-1.5 py-0.5"
+                            className="font-mono text-[11px] tracking-wider px-1.5 py-0.5"
                             style={{
                               backgroundColor: `color-mix(in srgb, var(--platoon-${entry.platoon}) 15%, transparent)`,
                               color: `var(--platoon-${entry.platoon})`,
@@ -148,11 +148,11 @@ export default function PaybacksPage() {
                           </span>
                         )}
                       </div>
-                      <span className="font-mono text-[9px] tracking-wider text-muted uppercase">
+                      <span className="font-mono text-[11px] tracking-wider text-muted uppercase">
                         {entry.date}
                       </span>
                     </div>
-                    <p className="font-mono text-[11px] text-muted">
+                    <p className="font-mono text-[13px] text-muted">
                       {entry.details}
                     </p>
                   </div>
@@ -164,7 +164,7 @@ export default function PaybacksPage() {
       ) : null}
 
       <div className="mt-4 p-4 bg-surface-raised/50 border border-border-subtle animate-fade-slide-up delay-300">
-        <p className="font-mono text-[10px] tracking-wider text-muted leading-relaxed">
+        <p className="font-mono text-[12px] tracking-wider text-muted leading-relaxed">
           Data scraped from your Telestaff dashboard. Cached for 15 minutes.
         </p>
       </div>

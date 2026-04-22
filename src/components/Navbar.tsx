@@ -42,7 +42,7 @@ export default function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="px-3 py-1.5 font-mono text-[11px] tracking-[0.15em] text-muted hover:text-foreground hover:bg-surface-raised transition-colors uppercase"
+                className="px-3 py-1.5 font-mono text-[13px] tracking-[0.15em] text-muted hover:text-foreground hover:bg-surface-raised transition-colors uppercase"
               >
                 {item.label}
               </Link>
@@ -51,12 +51,12 @@ export default function Navbar() {
 
           {/* User section */}
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[10px] tracking-wider text-muted hidden sm:block uppercase">
+            <span className="font-mono text-[12px] tracking-wider text-muted hidden sm:block uppercase">
               {session?.user?.name || session?.user?.email}
             </span>
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="hidden sm:block font-mono text-[10px] tracking-wider text-muted hover:text-alert-red transition-colors uppercase"
+              className="hidden sm:block font-mono text-[12px] tracking-wider text-muted hover:text-alert-red transition-colors uppercase"
             >
               [EXIT]
             </button>
@@ -103,7 +103,7 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="pt-2 border-t border-border">
-              <p className="px-3 font-mono text-[10px] text-muted mb-2">
+              <p className="px-3 font-mono text-[12px] text-muted mb-2">
                 {session?.user?.email}
               </p>
               <button

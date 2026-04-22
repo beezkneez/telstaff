@@ -71,7 +71,7 @@ export default function InstallBanner() {
             <p className="font-mono text-xs text-foreground font-medium">
               Install BetterStaff
             </p>
-            <p className="font-mono text-[9px] text-muted">
+            <p className="font-mono text-[11px] text-muted">
               {isIOS
                 ? "Tap Share → Add to Home Screen"
                 : "Add to your home screen for quick access"}
@@ -82,14 +82,14 @@ export default function InstallBanner() {
           {!isIOS && (
             <button
               onClick={handleInstall}
-              className="px-3 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[10px] tracking-wider uppercase transition-all"
+              className="px-3 py-1.5 bg-ember hover:bg-ember-glow text-white font-mono text-[12px] tracking-wider uppercase transition-all"
             >
               Install
             </button>
           )}
           <button
             onClick={handleDismiss}
-            className="px-2 py-1.5 text-muted hover:text-foreground font-mono text-[10px] tracking-wider transition-colors"
+            className="px-2 py-1.5 text-muted hover:text-foreground font-mono text-[12px] tracking-wider transition-colors"
           >
             Later
           </button>

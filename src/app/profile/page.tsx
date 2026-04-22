@@ -65,7 +65,7 @@ function ChangePasswordSection() {
             className="px-6 py-2.5 bg-ember hover:bg-ember-glow text-white text-sm font-semibold transition-all hover:shadow-[0_0_20px_rgba(255,74,28,0.3)] disabled:opacity-50">
             {pwSaving ? "Changing..." : "Change Password"}
           </button>
-          {pwSaved && <span className="font-mono text-[10px] text-success tracking-wider animate-fade-in uppercase">Password updated</span>}
+          {pwSaved && <span className="font-mono text-[12px] text-success tracking-wider animate-fade-in uppercase">Password updated</span>}
         </div>
       </form>
     </div>
@@ -179,7 +179,7 @@ export default function ProfilePage() {
           </h2>
         </div>
         <div className="p-5 space-y-4">
-          <p className="font-mono text-[10px] tracking-wider text-muted uppercase">
+          <p className="font-mono text-[12px] tracking-wider text-muted uppercase">
             Dashboard loads your home platoon and station on first visit
           </p>
           <div className="grid grid-cols-2 gap-3">
@@ -230,7 +230,7 @@ export default function ProfilePage() {
               Save Defaults
             </button>
             {defaultsSaved && (
-              <span className="font-mono text-[10px] text-success tracking-wider animate-fade-in uppercase">
+              <span className="font-mono text-[12px] text-success tracking-wider animate-fade-in uppercase">
                 Saved
               </span>
             )}
@@ -347,7 +347,7 @@ export default function ProfilePage() {
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
               />
             </svg>
-            <p className="text-[11px] text-muted leading-relaxed">
+            <p className="text-[13px] text-muted leading-relaxed">
               Your Telestaff credentials are encrypted with AES-256-GCM before
               storage. They are only decrypted server-side when scraping data on
               your behalf.
