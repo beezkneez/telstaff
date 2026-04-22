@@ -49,11 +49,15 @@ export default function CallInReviewPage() {
     );
   }
 
-  function setEdit(id: string, patch: Partial<{ lastName: string; firstName: string; payrollNumber: string }>) {
-    setEdits((prev) => ({
-      ...prev,
-      [id]: { ...(prev[id] || { lastName: "", firstName: "", payrollNumber: "" }), ...patch },
-    }));
+  function setEdit(m: Member, patch: Partial<{ lastName: string; firstName: string; payrollNumber: string }>) {
+    setEdits((prev) => {
+      const base = prev[m.id] || {
+        lastName: m.lastName,
+        firstName: m.firstName || "",
+        payrollNumber: m.payrollNumber || "",
+      };
+      return { ...prev, [m.id]: { ...base, ...patch } };
+    });
   }
 
   function isDirty(m: Member) {
@@ -234,13 +238,13 @@ export default function CallInReviewPage() {
                       <span className="font-mono text-[11px] text-muted w-8 text-right shrink-0">{m.position}</span>
                       <input
                         value={e.lastName}
-                        onChange={(ev) => setEdit(m.id, { lastName: ev.target.value })}
+                        onChange={(ev) => setEdit(m, { lastName: ev.target.value })}
                         className="px-1.5 py-1 bg-background border border-border-subtle font-mono text-xs text-foreground w-[95px]"
                         placeholder="LASTNAME"
                       />
                       <input
                         value={e.firstName}
-                        onChange={(ev) => setEdit(m.id, { firstName: ev.target.value })}
+                        onChange={(ev) => setEdit(m, { firstName: ev.target.value })}
                         className={`px-1.5 py-1 bg-background border font-mono text-xs text-foreground flex-1 min-w-0 ${
                           missing && !e.firstName ? "border-alert-red/40" : "border-border-subtle"
                         }`}
@@ -248,7 +252,7 @@ export default function CallInReviewPage() {
                       />
                       <input
                         value={e.payrollNumber}
-                        onChange={(ev) => setEdit(m.id, { payrollNumber: ev.target.value })}
+                        onChange={(ev) => setEdit(m, { payrollNumber: ev.target.value })}
                         className="px-1.5 py-1 bg-background border border-border-subtle font-mono text-[11px] text-muted w-[70px]"
                         placeholder="#"
                       />
