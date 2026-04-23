@@ -368,26 +368,21 @@ export async function GET(req: Request) {
 
   console.log("[overtime] Recent shift call-ins:", recentShiftCallIns.map((h) => `PLT-${h.platoon} ${h.shift} ${h.date}: ${h.noData ? "no-data" : h.otwpCount + " OTWP"}`).join(", "));
 
-  // Update prediction with recent shift holes and the NEXT shift's actual holes
+  // Update prediction using the next actual shift's hole count from the staffing cache.
+  // Only use a shortfall with real cached data (skip noData rows). Prefer the next day
+  // shift, fall back to the next night shift. If neither has fresh data, leave todayHoles
+  // null so the prediction can say "awaiting fresh scrape" rather than guess from averages.
   if (prediction && callInData?.positionsAhead !== null) {
-    // Find the first upcoming shift with holes (day or night)
-    const nextDayShift = shortfalls.find((sf) => sf.shift === "day");
-    const nextNightShift = shortfalls.find((sf) => sf.shift === "night");
-
-    // Use the average holes per shift across the upcoming 6-off
-    const allHoles = shortfalls.map((sf) => sf.ffHoles);
-    const avgHolesPerShift = allHoles.length > 0
-      ? Math.round(allHoles.reduce((s, h) => s + h, 0) / allHoles.length)
-      : 0;
-
-    // Use the first day shift holes as the primary number (most relevant)
-    const primaryHoles = nextDayShift?.ffHoles || nextNightShift?.ffHoles || avgHolesPerShift;
+    const withData = (shortfalls as (StaffingShortfall & { noData?: boolean })[]).filter((sf) => !sf.noData);
+    const nextDayShift = withData.find((sf) => sf.shift === "day");
+    const nextNightShift = withData.find((sf) => sf.shift === "night");
+    const primaryHoles = nextDayShift?.ffHoles ?? nextNightShift?.ffHoles ?? null;
 
     prediction = predictOvertime({
       positionsAhead: callInData!.positionsAhead!,
       last6OffTotal: prediction.last6OffTotal,
       todayOtwp: prediction.todayOtwp,
-      todayHoles: primaryHoles > 0 ? primaryHoles : null,
+      todayHoles: primaryHoles,
       date,
       yesterdayRatio: prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value !== "N/A"
         ? parseFloat(prediction.factors.find((f) => f.name === "Yesterday's ratio")?.value || "0")

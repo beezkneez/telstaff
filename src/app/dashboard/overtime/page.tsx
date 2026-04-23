@@ -56,6 +56,8 @@ interface OvertimeData {
     statHolidayName: string | null;
     dayOfWeek: string;
     scenarios: { label: string; acceptRate: string; namesCalledPerShift: number; namesCalledOver6Off: number; getsCalled: boolean; margin: number }[];
+    currentHoles: number | null;
+    holesSource: "actual" | "none";
     factors: { name: string; value: string; impact: string }[];
   } | null;
   dataStale: boolean;
@@ -205,11 +207,29 @@ export default function OvertimePage() {
             <button
               onClick={async () => {
                 setLoading(true);
-                const todayPlatoon = data.onShift.dayShift || data.onShift.nightShift || "1";
-                await fetch("/api/stations/refresh", {
+                // Build list of every (platoon, date) that appears in the upcoming 6-off so
+                // both day and night holes reflect current Telestaff state after book-offs.
+                const scrapes: { platoon: string; date: string }[] = [];
+                const seen = new Set<string>();
+                const push = (platoon: string | null, date: string) => {
+                  if (!platoon) return;
+                  const key = `${platoon}:${date}`;
+                  if (seen.has(key)) return;
+                  seen.add(key);
+                  scrapes.push({ platoon, date });
+                };
+                for (const d of data.next6OffDetails || []) {
+                  push(d.dayShiftPlatoon, d.date);
+                  push(d.nightShiftPlatoon, d.date);
+                }
+                // Also the selected date itself (in case user is viewing a different date)
+                push(data.onShift.dayShift, selectedDate);
+                push(data.onShift.nightShift, selectedDate);
+
+                await fetch("/api/stations/refresh-batch", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ platoon: todayPlatoon, date: selectedDate }),
+                  body: JSON.stringify({ scrapes }),
                 }).catch(() => {});
                 const res = await fetch(`/api/overtime?date=${selectedDate}`);
                 const d = await res.json();
@@ -394,16 +414,20 @@ export default function OvertimePage() {
               <p className="font-mono text-sm text-foreground leading-relaxed">{data.prediction.explanation}</p>
 
               {/* Scenario Analysis */}
-              {data.prediction.scenarios && data.prediction.scenarios.length > 0 && (
+              {data.prediction.holesSource === "none" ? (
+                <div className="mt-4 border border-amber/30 bg-amber/5 px-3 py-2.5">
+                  <p className="font-mono text-[12px] text-amber leading-relaxed">
+                    Awaiting fresh staffing data for tonight&apos;s shift — hit <span className="text-ember">Rescrape Now</span> to pull the current hole count from Telestaff.
+                  </p>
+                </div>
+              ) : data.prediction.scenarios.length > 0 && (
                 <div className="mt-4 border border-border-subtle">
                   <div className="px-3 py-2 bg-surface-raised/50 border-b border-border-subtle flex items-center justify-between">
                     <span className="font-mono text-[12px] tracking-[0.2em] text-muted uppercase">
                       What If — Tonight&apos;s Shift
                     </span>
                     <span className="font-mono text-[12px] text-ember">
-                      {data.prediction.scenarios[0]?.namesCalledPerShift
-                        ? `${Math.round(data.prediction.scenarios[0].namesCalledPerShift / 2)} holes to fill`
-                        : ""}
+                      {data.prediction.currentHoles} {data.prediction.currentHoles === 1 ? "hole" : "holes"} to fill
                     </span>
                   </div>
                   <div className="divide-y divide-border-subtle">
@@ -431,7 +455,7 @@ export default function OvertimePage() {
                   </div>
                   <div className="px-3 py-2 bg-surface-raised/30">
                     <p className="font-mono text-[12px] text-muted leading-relaxed">
-                      You&apos;re {data.prediction.positionsAhead} away. Tonight has {Math.round(data.prediction.scenarios[0]?.namesCalledPerShift / 2) || "?"} holes to fill.
+                      You&apos;re {data.prediction.positionsAhead} away. Tonight has {data.prediction.currentHoles} holes to fill.
                       {data.prediction.scenarios.filter((s) => s.getsCalled).length === 0
                         ? " Even at the worst acceptance rate, they won't reach you tonight."
                         : data.prediction.scenarios.filter((s) => s.getsCalled).length === data.prediction.scenarios.length

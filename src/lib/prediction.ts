@@ -147,6 +147,11 @@ export interface PredictionResult {
   statHolidayName: string | null;
   dayOfWeek: string;
   scenarios: Scenario[];
+  // When scenarios are driven by a real staffing-cache hole count, this is the number and
+  // `holesSource` is "actual". When we don't have fresh data, scenarios is [] and
+  // `holesSource` is "none" — the UI should say "awaiting fresh data" instead of guessing.
+  currentHoles: number | null;
+  holesSource: "actual" | "none";
   factors: {
     name: string;
     value: string;
@@ -161,18 +166,13 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
   const stat = isNearStatHoliday(date);
   const { ratio: baseRatio, label: baseLabel } = getCallThroughRate(date);
 
-  // 70/30 weighted hole estimate: recent OTWP call-ins (70%) + historical avg (30%)
-  // Skip rows with no cached data — they shouldn't drag the avg toward 0.
+  // Recent OTWP call-in average — still reported as a factor for context, but no longer
+  // substituted for tonight's hole count. Skip rows flagged noData so missing-cache entries
+  // don't drag the average to zero.
   const recentWithData = recentShiftCallIns?.filter((h) => !h.noData) ?? [];
-  let weightedHoles: number;
-  let recentAvg: number | null = null;
-  if (recentWithData.length > 0) {
-    recentAvg = recentWithData.reduce((s, h) => s + h.otwpCount, 0) / recentWithData.length;
-    const historicalAvg = last6OffTotal > 0 ? last6OffTotal / 8 : recentAvg;
-    weightedHoles = Math.round(recentAvg * 0.7 + historicalAvg * 0.3);
-  } else {
-    weightedHoles = todayHoles !== null ? todayHoles : (last6OffTotal > 0 ? Math.round(last6OffTotal / 8) : 8);
-  }
+  const recentAvg: number | null = recentWithData.length > 0
+    ? recentWithData.reduce((s, h) => s + h.otwpCount, 0) / recentWithData.length
+    : null;
 
   // Dynamic adjustment based on historical trends
   let dynamicMultiplier = 1.0;
@@ -210,12 +210,15 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
   const callThroughRatio = Math.round(baseRatio * dynamicMultiplier * 10) / 10;
   const callThroughLabel = dynamicNote || baseLabel;
 
-  // Best estimate of call-ins
+  // Best estimate of call-ins for the "names called today" summary at the top of the
+  // prediction card. Prefer today's OTWP count when the scrape has it; otherwise fall
+  // back to the recent-shift average (for the SUMMARY only — scenarios still require a
+  // real hole count and won't render off this).
   const avgPerShift = last6OffTotal > 0 ? last6OffTotal / 8 : 8;
   const estimatedSlots = todayOtwp !== null
     ? todayOtwp
-    : (recentWithData.length > 0)
-      ? weightedHoles
+    : recentAvg !== null
+      ? Math.round(recentAvg)
       : Math.round(avgPerShift);
   const namesTheyWillCall = Math.ceil(estimatedSlots * callThroughRatio);
   const totalNamesOver6Off = Math.ceil(last6OffTotal * callThroughRatio);
@@ -294,8 +297,13 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     explanation += ` Note: ${stat.holiday} is ${stat.daysAway} days away — this typically reduces bookoffs and overtime demand around these dates.`;
   }
 
-  // Build scenarios based on weighted hole estimate (70% recent shifts, 30% historical)
-  const currentHoles = todayHoles !== null ? todayHoles : weightedHoles;
+  // Scenarios only render when we have a real hole count from the current staffing cache.
+  // Historical-average fallbacks produced misleading numbers (e.g. "34 holes" when tonight
+  // actually has 5), so when todayHoles is null we return no scenarios and let the UI
+  // surface that we're waiting on a fresh scrape.
+  const currentHoles = todayHoles;
+  const holesSource: PredictionResult["holesSource"] = currentHoles !== null ? "actual" : "none";
+
   const scenarioRates = [
     { label: "High acceptance", rate: "1 in 2", ratio: 2 },
     { label: "Good acceptance (weekday)", rate: "1 in 3", ratio: 3 },
@@ -306,19 +314,20 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     { label: "Extreme", rate: "1 in 8", ratio: 8 },
   ];
 
-  const scenarios: Scenario[] = scenarioRates.map((sr) => {
-    // Tonight's holes × ratio = names they'll call THIS SHIFT
-    const namesPerShift = currentHoles * sr.ratio;
-    const margin = namesPerShift - positionsAhead;
-    return {
-      label: sr.label,
-      acceptRate: sr.rate,
-      namesCalledPerShift: namesPerShift,
-      namesCalledOver6Off: namesPerShift, // per-shift focused
-      getsCalled: margin > 0,
-      margin,
-    };
-  });
+  const scenarios: Scenario[] = currentHoles !== null
+    ? scenarioRates.map((sr) => {
+        const namesPerShift = currentHoles * sr.ratio;
+        const margin = namesPerShift - positionsAhead;
+        return {
+          label: sr.label,
+          acceptRate: sr.rate,
+          namesCalledPerShift: namesPerShift,
+          namesCalledOver6Off: namesPerShift,
+          getsCalled: margin > 0,
+          margin,
+        };
+      })
+    : [];
 
   const factors: PredictionResult["factors"] = [
     { name: "Your position ahead", value: String(positionsAhead), impact: "How far you are from the start" },
@@ -353,6 +362,8 @@ export function predictOvertime(input: PredictionInput): PredictionResult {
     statHolidayName: stat.holiday,
     dayOfWeek,
     scenarios,
+    currentHoles,
+    holesSource,
     factors,
   };
 }

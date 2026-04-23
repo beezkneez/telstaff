@@ -210,6 +210,29 @@ export async function runNightlyScrape(): Promise<void> {
   console.log("[cron] Nightly scrape complete");
 }
 
+// Targeted scrape of today's on-shift platoon for a single shift. Runs cheap — roster + OTWP
+// for just (today, shift-platoon) — so we can fire it at 8 AM and 6 PM to catch book-offs
+// entered after people arrive without doing the full 27-day bath.
+export async function runTodayShiftScrape(shift: "day" | "night"): Promise<void> {
+  const creds = await getSystemCredentials();
+  if (!creds) {
+    console.log("[cron] No system credentials available, skipping");
+    return;
+  }
+
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Edmonton" });
+  const onShift = getOnShiftPlatoons(today);
+  const platoon = shift === "day" ? onShift.dayShift : onShift.nightShift;
+  if (!platoon) {
+    console.log(`[cron] No ${shift} shift platoon for ${today}`);
+    return;
+  }
+
+  console.log(`[cron] Targeted ${shift}-shift scrape — PLT-${platoon} on ${today}`);
+  await scrapeAndCacheRoster(creds.username, creds.password, platoon, today);
+  await scrapeAndCacheOTWP(creds.username, creds.password, today, "", shift);
+}
+
 export function initCron(): void {
   if (initialized) return;
   initialized = true;
@@ -227,6 +250,12 @@ export function initCron(): void {
   cron.schedule("0 7 * * *", () => {
     console.log("[cron] Running 7 AM scrape...");
     runNightlyScrape().catch((err) => console.error("[cron] 7 AM error:", err));
+  }, { timezone: tz });
+
+  // 8:00 AM MT (targeted — today's day shift, post-arrival book-offs)
+  cron.schedule("0 8 * * *", () => {
+    console.log("[cron] Running 8 AM day-shift scrape...");
+    runTodayShiftScrape("day").catch((err) => console.error("[cron] 8 AM error:", err));
   }, { timezone: tz });
 
   // 10:00 AM MT (mid-morning update)
@@ -253,7 +282,13 @@ export function initCron(): void {
     runNightlyScrape().catch((err) => console.error("[cron] 5 PM error:", err));
   }, { timezone: tz });
 
-  console.log("[cron] Scheduled: 6:30 AM, 7 AM, 10 AM, 1 PM, 4:30 PM, 5 PM (America/Edmonton)");
+  // 6:00 PM MT (targeted — tonight's night shift, post-arrival book-offs)
+  cron.schedule("0 18 * * *", () => {
+    console.log("[cron] Running 6 PM night-shift scrape...");
+    runTodayShiftScrape("night").catch((err) => console.error("[cron] 6 PM error:", err));
+  }, { timezone: tz });
+
+  console.log("[cron] Scheduled: 6:30 AM, 7 AM, 8 AM (day), 10 AM, 1 PM, 4:30 PM, 5 PM, 6 PM (night) (America/Edmonton)");
 
   // Run immediately on startup if no recent data
   setTimeout(() => {
