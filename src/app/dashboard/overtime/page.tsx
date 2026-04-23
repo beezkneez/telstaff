@@ -207,30 +207,20 @@ export default function OvertimePage() {
             <button
               onClick={async () => {
                 setLoading(true);
-                // Build list of every (platoon, date) that appears in the upcoming 6-off so
-                // both day and night holes reflect current Telestaff state after book-offs.
+                // Only today's on-shift platoons have rapidly-changing state. Future dates
+                // are handled by the nightly full scrape.
                 const scrapes: { platoon: string; date: string }[] = [];
-                const seen = new Set<string>();
-                const push = (platoon: string | null, date: string) => {
-                  if (!platoon) return;
-                  const key = `${platoon}:${date}`;
-                  if (seen.has(key)) return;
-                  seen.add(key);
-                  scrapes.push({ platoon, date });
-                };
-                for (const d of data.next6OffDetails || []) {
-                  push(d.dayShiftPlatoon, d.date);
-                  push(d.nightShiftPlatoon, d.date);
+                if (data.onShift.dayShift) scrapes.push({ platoon: data.onShift.dayShift, date: selectedDate });
+                if (data.onShift.nightShift && data.onShift.nightShift !== data.onShift.dayShift) {
+                  scrapes.push({ platoon: data.onShift.nightShift, date: selectedDate });
                 }
-                // Also the selected date itself (in case user is viewing a different date)
-                push(data.onShift.dayShift, selectedDate);
-                push(data.onShift.nightShift, selectedDate);
-
-                await fetch("/api/stations/refresh-batch", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ scrapes }),
-                }).catch(() => {});
+                if (scrapes.length > 0) {
+                  await fetch("/api/stations/refresh-batch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ scrapes }),
+                  }).catch(() => {});
+                }
                 const res = await fetch(`/api/overtime?date=${selectedDate}`);
                 const d = await res.json();
                 setData(d);
