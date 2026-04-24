@@ -276,33 +276,100 @@ export default function OvertimePage() {
                 {data.sixOffDetails.map((day, i) => {
                   const dayLabel = new Date(day.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                   const otwp = otwpData.find((o) => o.date === day.date);
+                  const dayNote = findNote(day.date, "day", day.dayShiftPlatoon);
+                  const nightNote = findNote(day.date, "night", day.nightShiftPlatoon);
+                  const dayKey = day.dayShiftPlatoon ? `${day.date}|day|${day.dayShiftPlatoon}` : "";
+                  const nightKey = day.nightShiftPlatoon ? `${day.date}|night|${day.nightShiftPlatoon}` : "";
                   return (
-                    <div key={day.date} className={`flex items-center justify-between px-3 py-2.5 ${day.eligible ? "bg-surface-raised/50" : "bg-surface-raised/20 opacity-60"}`}>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-[12px] text-muted w-4">{i + 1}</span>
-                        <span className="font-mono text-sm text-foreground">{dayLabel}</span>
-                        {!day.eligible && <span className="font-mono text-[12px] text-muted tracking-wider">NOT ELIGIBLE</span>}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[12px] text-amber tracking-wider">DAY</span>
-                          <span className="font-mono text-[12px] px-1.5 py-0.5" style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>PLT-{day.dayShiftPlatoon}</span>
-                          {otwp ? (
-                            <span className={`font-mono text-[13px] font-bold ml-1 ${otwp.dayShiftCount > 0 ? "text-ember" : "text-muted"}`}>
-                              {otwp.dayShiftCount > 0 ? otwp.dayShiftCount : "0"}
-                            </span>
-                          ) : otwpLoading ? <span className="font-mono text-[11px] text-muted ml-1">...</span> : <span className="font-mono text-[12px] text-muted/40 ml-1">—</span>}
+                    <div key={day.date} className={day.eligible ? "bg-surface-raised/50" : "bg-surface-raised/20 opacity-60"}>
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-[12px] text-muted w-4">{i + 1}</span>
+                          <span className="font-mono text-sm text-foreground">{dayLabel}</span>
+                          {!day.eligible && <span className="font-mono text-[12px] text-muted tracking-wider">NOT ELIGIBLE</span>}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[12px] text-platoon-3 tracking-wider">NIGHT</span>
-                          <span className="font-mono text-[12px] px-1.5 py-0.5" style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>PLT-{day.nightShiftPlatoon}</span>
-                          {otwp ? (
-                            <span className={`font-mono text-[13px] font-bold ml-1 ${otwp.nightShiftCount > 0 ? "text-ember" : "text-muted"}`}>
-                              {otwp.nightShiftCount > 0 ? otwp.nightShiftCount : "0"}
-                            </span>
-                          ) : otwpLoading ? <span className="font-mono text-[11px] text-muted ml-1">...</span> : <span className="font-mono text-[12px] text-muted/40 ml-1">—</span>}
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[12px] text-amber tracking-wider">DAY</span>
+                            <span className="font-mono text-[12px] px-1.5 py-0.5" style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>PLT-{day.dayShiftPlatoon}</span>
+                            {otwp ? (
+                              <span className={`font-mono text-[13px] font-bold ml-1 ${otwp.dayShiftCount > 0 ? "text-ember" : "text-muted"}`}>
+                                {otwp.dayShiftCount > 0 ? otwp.dayShiftCount : "0"}
+                              </span>
+                            ) : otwpLoading ? <span className="font-mono text-[11px] text-muted ml-1">...</span> : <span className="font-mono text-[12px] text-muted/40 ml-1">—</span>}
+                            {isAdmin && day.dayShiftPlatoon && (
+                              <button
+                                onClick={() => openNoteEditor(day.date, "day", day.dayShiftPlatoon!)}
+                                className={`font-mono text-[11px] px-1 border ${dayNote ? "border-ember/40 text-ember" : "border-border text-muted/60 hover:text-foreground"}`}
+                                title={dayNote ? "Edit note" : "Add note"}
+                              >
+                                {dayNote ? "✎" : "+"}
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[12px] text-platoon-3 tracking-wider">NIGHT</span>
+                            <span className="font-mono text-[12px] px-1.5 py-0.5" style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>PLT-{day.nightShiftPlatoon}</span>
+                            {otwp ? (
+                              <span className={`font-mono text-[13px] font-bold ml-1 ${otwp.nightShiftCount > 0 ? "text-ember" : "text-muted"}`}>
+                                {otwp.nightShiftCount > 0 ? otwp.nightShiftCount : "0"}
+                              </span>
+                            ) : otwpLoading ? <span className="font-mono text-[11px] text-muted ml-1">...</span> : <span className="font-mono text-[12px] text-muted/40 ml-1">—</span>}
+                            {isAdmin && day.nightShiftPlatoon && (
+                              <button
+                                onClick={() => openNoteEditor(day.date, "night", day.nightShiftPlatoon!)}
+                                className={`font-mono text-[11px] px-1 border ${nightNote ? "border-ember/40 text-ember" : "border-border text-muted/60 hover:text-foreground"}`}
+                                title={nightNote ? "Edit note" : "Add note"}
+                              >
+                                {nightNote ? "✎" : "+"}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      {(dayNote || nightNote) && (
+                        <div className="px-3 pb-2 space-y-0.5">
+                          {dayNote && (
+                            <div className="font-mono text-[11px] text-muted leading-relaxed">
+                              <span className="text-amber">↳ DAY PLT-{day.dayShiftPlatoon}:</span> {dayNote.note}
+                            </div>
+                          )}
+                          {nightNote && (
+                            <div className="font-mono text-[11px] text-muted leading-relaxed">
+                              <span className="text-platoon-3">↳ NIGHT PLT-{day.nightShiftPlatoon}:</span> {nightNote.note}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {(noteEditKey === dayKey || noteEditKey === nightKey) && (
+                        <div className="px-3 pb-3">
+                          <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            placeholder="e.g. Telestaff error — actually even staffed"
+                            rows={2}
+                            className="w-full px-2 py-1.5 bg-background border border-border font-mono text-[12px] text-foreground placeholder:text-muted/50"
+                          />
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <button
+                              onClick={() => {
+                                const [d, s, p] = noteEditKey!.split("|");
+                                saveNote(d, s as "day" | "night", p);
+                              }}
+                              disabled={noteSaving}
+                              className="px-2 py-1 font-mono text-[11px] tracking-wider uppercase bg-ember/20 border border-ember/40 text-ember hover:bg-ember/30 disabled:opacity-40"
+                            >
+                              {noteSaving ? "..." : noteText.trim() ? "Save" : "Delete"}
+                            </button>
+                            <button
+                              onClick={() => { setNoteEditKey(null); setNoteText(""); }}
+                              className="px-2 py-1 font-mono text-[11px] tracking-wider uppercase bg-surface-overlay border border-border text-muted hover:text-foreground"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
