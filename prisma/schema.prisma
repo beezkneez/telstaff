@@ -104,3 +104,17 @@ model OTWPCache {
   @@unique([date, platoon, shift])
   @@index([date])
 }
+
+model ShiftNote {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  platoon   String
+  shift     String   // "day" or "night"
+  note      String
+  authorId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, platoon, shift])
+  @@index([date])
+}

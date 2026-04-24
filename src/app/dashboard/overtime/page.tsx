@@ -76,6 +76,7 @@ interface OvertimeData {
   ytdNeeded: { platoon: string; total: number }[];
   ytdWorked: { platoon: string; total: number }[];
   recentShiftCallIns: RecentShiftCallIn[];
+  shiftNotes: { date: string; platoon: string; shift: string; note: string }[];
 }
 
 interface OTWPResult {
@@ -105,6 +106,38 @@ export default function OvertimePage() {
   );
   const userRowRef = useRef<HTMLDivElement | null>(null);
   const listScrollRef = useRef<HTMLDivElement | null>(null);
+  const [noteEditKey, setNoteEditKey] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+
+  function findNote(date: string, shift: "day" | "night", platoon: string | null) {
+    if (!platoon) return null;
+    return data?.shiftNotes?.find((n) => n.date === date && n.shift === shift && n.platoon === platoon) || null;
+  }
+
+  function openNoteEditor(date: string, shift: "day" | "night", platoon: string) {
+    setNoteEditKey(`${date}|${shift}|${platoon}`);
+    const existing = findNote(date, shift, platoon);
+    setNoteText(existing?.note || "");
+  }
+
+  async function saveNote(date: string, shift: "day" | "night", platoon: string) {
+    setNoteSaving(true);
+    try {
+      await fetch("/api/overtime/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, shift, platoon, note: noteText }),
+      });
+      const res = await fetch(`/api/overtime?date=${selectedDate}`);
+      const d = await res.json();
+      setData(d);
+      setNoteEditKey(null);
+      setNoteText("");
+    } finally {
+      setNoteSaving(false);
+    }
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -484,49 +517,116 @@ export default function OvertimePage() {
                   const nightActual = nightShortfalls.find((sf) => !sf.noData)?.actualCrew;
                   const hasDayData = dayShortfalls.length > 0;
                   const hasNightData = nightShortfalls.length > 0;
+                  const dayNote = findNote(day.date, "day", day.dayShiftPlatoon);
+                  const nightNote = findNote(day.date, "night", day.nightShiftPlatoon);
+                  const dayKey = day.dayShiftPlatoon ? `${day.date}|day|${day.dayShiftPlatoon}` : "";
+                  const nightKey = day.nightShiftPlatoon ? `${day.date}|night|${day.nightShiftPlatoon}` : "";
 
                   return (
-                    <div key={day.date} className={`flex items-center justify-between px-3 py-2.5 ${day.eligible ? "bg-surface-raised/50" : "opacity-50"}`}>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-[12px] text-muted w-4">{i + 1}</span>
-                        <span className="font-mono text-sm text-foreground">{dayLabel}</span>
-                        {!day.eligible && <span className="font-mono text-[12px] text-muted tracking-wider">NOT ELIGIBLE</span>}
-                        {day.statHoliday && day.statDaysAway === 0 && (
-                          <span className="font-mono text-[12px] tracking-wider px-1.5 py-0.5 bg-amber/10 text-amber border border-amber/20">{day.statHoliday}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[12px] text-amber tracking-wider">DAY</span>
-                          <span className="font-mono text-[12px] px-1.5 py-0.5"
-                            style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>
-                            PLT-{day.dayShiftPlatoon}
-                          </span>
-                          {hasDayData && (
-                            <>
-                              <span className={`font-mono text-[12px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
-                                [{dayNoData ? "—" : dayShiftHoles > 0 ? `-${dayShiftHoles}` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}` : "="}]
-                              </span>
-                              {dayActual != null && <span className="font-mono text-[11px] text-muted/50">{dayActual}/216</span>}
-                            </>
+                    <div key={day.date} className={day.eligible ? "bg-surface-raised/50" : "opacity-50"}>
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-[12px] text-muted w-4">{i + 1}</span>
+                          <span className="font-mono text-sm text-foreground">{dayLabel}</span>
+                          {!day.eligible && <span className="font-mono text-[12px] text-muted tracking-wider">NOT ELIGIBLE</span>}
+                          {day.statHoliday && day.statDaysAway === 0 && (
+                            <span className="font-mono text-[12px] tracking-wider px-1.5 py-0.5 bg-amber/10 text-amber border border-amber/20">{day.statHoliday}</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[12px] text-platoon-3 tracking-wider">NIGHT</span>
-                          <span className="font-mono text-[12px] px-1.5 py-0.5"
-                            style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>
-                            PLT-{day.nightShiftPlatoon}
-                          </span>
-                          {hasNightData && (
-                            <>
-                              <span className={`font-mono text-[12px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
-                                [{nightNoData ? "—" : nightShiftHoles > 0 ? `-${nightShiftHoles}` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}` : "="}]
-                              </span>
-                              {nightActual != null && <span className="font-mono text-[11px] text-muted/50">{nightActual}/216</span>}
-                            </>
-                          )}
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[12px] text-amber tracking-wider">DAY</span>
+                            <span className="font-mono text-[12px] px-1.5 py-0.5"
+                              style={{ backgroundColor: day.dayShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.dayShiftPlatoon}) 15%, transparent)` : undefined, color: day.dayShiftPlatoon ? `var(--platoon-${day.dayShiftPlatoon})` : undefined }}>
+                              PLT-{day.dayShiftPlatoon}
+                            </span>
+                            {hasDayData && (
+                              <>
+                                <span className={`font-mono text-[12px] font-bold ${dayNoData ? "text-muted/50" : dayShiftHoles > 0 ? "text-amber" : dayShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                                  [{dayNoData ? "—" : dayShiftHoles > 0 ? `-${dayShiftHoles}` : dayShiftHoles < 0 ? `+${Math.abs(dayShiftHoles)}` : "="}]
+                                </span>
+                                {dayActual != null && <span className="font-mono text-[11px] text-muted/50">{dayActual}/216</span>}
+                              </>
+                            )}
+                            {isAdmin && day.dayShiftPlatoon && (
+                              <button
+                                onClick={() => openNoteEditor(day.date, "day", day.dayShiftPlatoon!)}
+                                className={`font-mono text-[11px] px-1 border ${dayNote ? "border-ember/40 text-ember" : "border-border text-muted/60 hover:text-foreground"}`}
+                                title={dayNote ? "Edit note" : "Add note"}
+                              >
+                                {dayNote ? "✎" : "+"}
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[12px] text-platoon-3 tracking-wider">NIGHT</span>
+                            <span className="font-mono text-[12px] px-1.5 py-0.5"
+                              style={{ backgroundColor: day.nightShiftPlatoon ? `color-mix(in srgb, var(--platoon-${day.nightShiftPlatoon}) 15%, transparent)` : undefined, color: day.nightShiftPlatoon ? `var(--platoon-${day.nightShiftPlatoon})` : undefined }}>
+                              PLT-{day.nightShiftPlatoon}
+                            </span>
+                            {hasNightData && (
+                              <>
+                                <span className={`font-mono text-[12px] font-bold ${nightNoData ? "text-muted/50" : nightShiftHoles > 0 ? "text-platoon-3" : nightShiftHoles < 0 ? "text-success" : "text-muted"}`}>
+                                  [{nightNoData ? "—" : nightShiftHoles > 0 ? `-${nightShiftHoles}` : nightShiftHoles < 0 ? `+${Math.abs(nightShiftHoles)}` : "="}]
+                                </span>
+                                {nightActual != null && <span className="font-mono text-[11px] text-muted/50">{nightActual}/216</span>}
+                              </>
+                            )}
+                            {isAdmin && day.nightShiftPlatoon && (
+                              <button
+                                onClick={() => openNoteEditor(day.date, "night", day.nightShiftPlatoon!)}
+                                className={`font-mono text-[11px] px-1 border ${nightNote ? "border-ember/40 text-ember" : "border-border text-muted/60 hover:text-foreground"}`}
+                                title={nightNote ? "Edit note" : "Add note"}
+                              >
+                                {nightNote ? "✎" : "+"}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      {(dayNote || nightNote) && (
+                        <div className="px-3 pb-2 space-y-0.5">
+                          {dayNote && (
+                            <div className="font-mono text-[11px] text-muted leading-relaxed">
+                              <span className="text-amber">↳ DAY PLT-{day.dayShiftPlatoon}:</span> {dayNote.note}
+                            </div>
+                          )}
+                          {nightNote && (
+                            <div className="font-mono text-[11px] text-muted leading-relaxed">
+                              <span className="text-platoon-3">↳ NIGHT PLT-{day.nightShiftPlatoon}:</span> {nightNote.note}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {(noteEditKey === dayKey || noteEditKey === nightKey) && (
+                        <div className="px-3 pb-3">
+                          <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            placeholder="e.g. Telestaff error — actually even staffed"
+                            rows={2}
+                            className="w-full px-2 py-1.5 bg-background border border-border font-mono text-[12px] text-foreground placeholder:text-muted/50"
+                          />
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <button
+                              onClick={() => {
+                                const [d, s, p] = noteEditKey!.split("|");
+                                saveNote(d, s as "day" | "night", p);
+                              }}
+                              disabled={noteSaving}
+                              className="px-2 py-1 font-mono text-[11px] tracking-wider uppercase bg-ember/20 border border-ember/40 text-ember hover:bg-ember/30 disabled:opacity-40"
+                            >
+                              {noteSaving ? "..." : noteText.trim() ? "Save" : "Delete"}
+                            </button>
+                            <button
+                              onClick={() => { setNoteEditKey(null); setNoteText(""); }}
+                              className="px-2 py-1 font-mono text-[11px] tracking-wider uppercase bg-surface-overlay border border-border text-muted hover:text-foreground"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

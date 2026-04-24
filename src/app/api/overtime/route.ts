@@ -391,6 +391,23 @@ export async function GET(req: Request) {
     });
   }
 
+  // Load shift notes covering every date shown on the page (last 6-off + next 6-off).
+  const noteDates = [...sixOffDetails.map((d) => d.date), ...next6OffDetails.map((d) => d.date)];
+  const noteBounds = noteDates.length > 0
+    ? {
+        gte: new Date(noteDates.reduce((a, b) => (a < b ? a : b)) + "T00:00:00Z"),
+        lte: new Date(noteDates.reduce((a, b) => (a > b ? a : b)) + "T00:00:00Z"),
+      }
+    : null;
+  const shiftNotes = noteBounds
+    ? (await prisma.shiftNote.findMany({ where: { date: noteBounds } })).map((n) => ({
+        date: n.date.toISOString().split("T")[0],
+        platoon: n.platoon,
+        shift: n.shift,
+        note: n.note,
+      }))
+    : [];
+
   return NextResponse.json({
     date,
     userPlatoon,
@@ -409,5 +426,6 @@ export async function GET(req: Request) {
     ytdNeeded,
     ytdWorked,
     recentShiftCallIns,
+    shiftNotes,
   });
 }
