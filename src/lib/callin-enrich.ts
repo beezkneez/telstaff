@@ -19,8 +19,11 @@ export async function enrichFromRoster(): Promise<{ updated: number; notFound: s
     dates.push(new Date(d.toISOString().split("T")[0] + "T00:00:00Z"));
   }
 
-  // Build a name lookup from all cached roster data
+  // Build a name lookup keyed by platoon+lastName. Without the platoon scope, two
+  // firefighters sharing a last name across different platoons collide and one gets the
+  // wrong first name assigned.
   const nameLookup = new Map<string, { firstName: string; payroll: string }>();
+  const key = (platoon: string, lastName: string) => `${platoon}:${lastName.toUpperCase()}`;
 
   for (const platoon of ["1", "2", "3", "4"]) {
     for (const dateObj of dates) {
@@ -41,13 +44,13 @@ export async function enrichFromRoster(): Promise<{ updated: number; notFound: s
           if (!truck.crew) continue;
           for (const member of truck.crew) {
             if (!member.name) continue;
-            // Name format: "LastName, FirstName" or "LastName, FirstName MiddleInit."
             const parts = member.name.split(",");
             if (parts.length >= 2) {
-              const lastName = parts[0].trim().toUpperCase();
-              const firstName = parts[1].trim().split(" ")[0]; // just first name, no middle
-              if (!nameLookup.has(lastName) || !nameLookup.get(lastName)!.firstName) {
-                nameLookup.set(lastName, {
+              const lastName = parts[0].trim();
+              const firstName = parts[1].trim().split(" ")[0];
+              const k = key(platoon, lastName);
+              if (!nameLookup.has(k) || !nameLookup.get(k)!.firstName) {
+                nameLookup.set(k, {
                   firstName,
                   payroll: member.employeeId || "",
                 });
@@ -59,11 +62,10 @@ export async function enrichFromRoster(): Promise<{ updated: number; notFound: s
     }
   }
 
-  console.log(`[enrich] Built lookup with ${nameLookup.size} names from roster`);
+  console.log(`[enrich] Built lookup with ${nameLookup.size} (platoon, name) pairs from roster`);
 
-  // Match and update
   for (const member of members) {
-    const match = nameLookup.get(member.lastName.toUpperCase());
+    const match = nameLookup.get(key(member.platoon, member.lastName));
     if (match && match.firstName) {
       await prisma.callInMember.update({
         where: { id: member.id },

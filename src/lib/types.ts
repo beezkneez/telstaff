@@ -2,6 +2,7 @@ export interface CrewMember {
   name: string;
   rank: string;
   position: string;
+  positionCode?: string; // FF, JQ, SQ, C — seat code shown in Telestaff beside the name
   employeeId?: string;
   status?: string; // REG, .Vac, Rel Supp, etc.
   qualifications?: string;

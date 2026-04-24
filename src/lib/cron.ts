@@ -207,6 +207,17 @@ export async function runNightlyScrape(): Promise<void> {
     }
   }
 
+  // Auto-fill any missing first names on CallInMembers from the fresh rosters we just
+  // scraped. Matches by (platoon, lastName) so two firefighters with the same surname
+  // on different platoons don't collide.
+  try {
+    const { enrichFromRoster } = await import("./callin-enrich");
+    const res = await enrichFromRoster();
+    console.log(`[cron] Enriched ${res.updated} call-in members, ${res.notFound.length} not found`);
+  } catch (err) {
+    console.error("[cron] Enrich failed:", err);
+  }
+
   console.log("[cron] Nightly scrape complete");
 }
 

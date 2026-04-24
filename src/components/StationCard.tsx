@@ -4,6 +4,7 @@ interface CrewMember {
   name: string;
   rank: string;
   position: string;
+  positionCode?: string;
   employeeId?: string;
   status?: string;
 }
@@ -170,7 +171,7 @@ export default function StationCard({
                             ? "bg-platoon-3/10 border-platoon-3/30 text-platoon-3"
                             : "bg-surface-overlay border-border text-muted"
                       }`}>
-                        {member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                        {member.positionCode || member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
                       <span className={`font-mono text-sm truncate ${isSearchMatch ? "text-pink-300 font-semibold" : ""}`}>
                         {member.name}
@@ -247,7 +248,7 @@ export default function StationCard({
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-5 h-5 flex items-center justify-center font-mono text-[11px] font-bold bg-surface-overlay border border-border text-muted">
-                        {member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                        {member.positionCode || member.name?.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                       </div>
                       <span className="font-mono text-sm truncate text-muted">
                         {member.name}

@@ -113,6 +113,7 @@ async function parseRosterPage(
           name: string;
           rank: string;
           position: string;
+          positionCode: string;
           employeeId: string;
           status: string;
           qualifications: string;
@@ -132,7 +133,7 @@ async function parseRosterPage(
       | { type: "station"; num: number; el: Element }
       | { type: "support"; name: string; el: Element }
       | { type: "truck"; name: string; phone: string; el: Element }
-      | { type: "crew"; name: string; rank: string; quals: string; status: string; el: Element };
+      | { type: "crew"; name: string; rank: string; positionCode: string; quals: string; status: string; el: Element };
 
     const markers: Marker[] = [];
 
@@ -172,6 +173,19 @@ async function parseRosterPage(
       const nameMatch = fullText.match(/^([A-Za-z'-]+,\s*[A-Za-z'-]+)/);
       const name = nameMatch ? nameMatch[1] : fullText.split("(")[0].trim();
 
+      // Seat/position code is the first token after the name, e.g. "SQ30" → "SQ",
+      // "C7" → "C", "FF12" → "FF", "Lt" → "LT". Captures FF/JQ/SQ/C (and L for
+      // Lieutenant when it appears); anything else we leave blank.
+      const afterName = nameMatch ? fullText.slice(nameMatch[0].length).trim() : "";
+      const codeMatch = afterName.match(/^([A-Za-z]+)/);
+      let positionCode = codeMatch ? codeMatch[1].toUpperCase() : "";
+      const codeMap: Record<string, string> = {
+        FF: "FF", JQ: "JQ", SQ: "SQ",
+        C: "C", CAPT: "C", CAPTAIN: "C",
+        L: "L", LT: "L", LIEUTENANT: "L",
+      };
+      positionCode = codeMap[positionCode] || "";
+
       const qualMatch = fullText.match(/\(([^)]+)\)/);
       const quals = qualMatch ? qualMatch[1] : "";
 
@@ -199,7 +213,7 @@ async function parseRosterPage(
         statusParent = statusParent.parentElement;
       }
 
-      markers.push({ type: "crew", name, rank, quals, el, status });
+      markers.push({ type: "crew", name, rank, positionCode, quals, el, status });
     });
 
     // Sort markers by DOM order
@@ -273,6 +287,7 @@ async function parseRosterPage(
           name: marker.name,
           rank: marker.rank,
           position: marker.rank,
+          positionCode: marker.positionCode,
           employeeId: "",
           status: marker.status || "",
           qualifications: marker.quals,
